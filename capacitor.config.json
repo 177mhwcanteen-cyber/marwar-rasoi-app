@@ -1,0 +1,12 @@
+{
+  "appId": "in.marwar.rasoi",
+  "appName": "Marwar Rasoi",
+  "webDir": "www",
+  "android": { "allowMixedContent": false, "captureInput": true },
+  "server": {
+    "androidScheme": "https",
+    "url": "https://177mhwcanteen-cyber.github.io/marwar-rasoi-app/",
+    "errorPath": "offline.html",
+    "allowNavigation": ["177mhwcanteen-cyber.github.io"]
+  }
+}

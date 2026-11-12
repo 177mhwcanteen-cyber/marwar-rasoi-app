@@ -1,0 +1,11 @@
+node_modules/
+www/
+dist/
+.DS_Store
+*.log
+android/app/*.jks
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/
+__pycache__/

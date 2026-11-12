@@ -1,0 +1,127 @@
+# हर बदलाव पर अपने-आप:
+#  1) वेबसाइट + अपडेट फ़ाइल GitHub Pages पर (फोन वाले ऐप में अपने-आप नया लग जाता है)
+#  2) नई APK "Releases" में (ज़रूरत हो तभी दोबारा इंस्टॉल करनी पड़ती है)
+name: build
+
+on:
+  push:
+    branches: [main]
+    # 📏 GitHub की सीमा बचाओ: सिर्फ़ लिखा-पढ़ी (docs, टेस्ट, md) बदले तो कुछ नहीं बनता
+    paths-ignore: ["docs/**", "**/*.md", "tests/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      native: ${{ steps.nat.outputs.native }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 50
+      # 📱 नई APK सिर्फ़ तब, जब Android वाला हिस्सा बदले (वरना "ऐप अपडेट करें" ही काफ़ी) — हर push पर APK से GitHub भरता नहीं
+      - id: nat
+        run: |
+          B="${{ github.event.before }}"; N=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$B" ] || ! git cat-file -e "$B" 2>/dev/null; then N=true
+          elif git diff --name-only "$B" "${{ github.sha }}" | grep -Eq '^(android/|capacitor\.config\.json|package(-lock)?\.json)'; then N=true
+          fi
+          echo "native=$N" >> "$GITHUB_OUTPUT"; echo "नई APK: $N"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - id: v
+        run: echo "version=1.${{ github.run_number }}.$(date -u +%m%d)" >> "$GITHUB_OUTPUT"
+      - run: npm run build
+        env:
+          SE_VERSION: ${{ steps.v.outputs.version }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: www
+          path: www
+          retention-days: 3
+
+  pages:
+    needs: web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  apk:
+    needs: web
+    if: needs.web.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Android SDK (runner में पहले से है)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          ls "$ANDROID_HOME" || true
+          if [ -x "$SDKM" ]; then
+            yes | "$SDKM" --licenses > /dev/null || true
+            "$SDKM" "platforms;android-36" "build-tools;36.0.0" > /dev/null || true
+          fi
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: www
+          path: www
+      - run: npx cap sync android
+      - name: साइन करने की चाबी (GitHub Secrets से)
+        run: echo "${{ secrets.RASOI_KEYSTORE_B64 }}" | base64 -d > android/app/rasoi-release.jks
+      - name: APK बनाएँ
+        working-directory: android
+        env:
+          RASOI_KS_PASS: ${{ secrets.RASOI_KS_PASS }}
+        run: chmod +x gradlew && ./gradlew --no-daemon assembleRelease
+      - run: cp android/app/build/outputs/apk/release/app-release.apk marwar-rasoi.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marwar-rasoi-apk
+          path: marwar-rasoi.apk
+          retention-days: 7
+      - name: Release में डालें (हमेशा एक ही लिंक से डाउनलोड)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-v${{ needs.web.outputs.version }}
+          name: Marwar Rasoi ${{ needs.web.outputs.version }}
+          body: |
+            इंस्टॉल: नीचे marwar-rasoi.apk डाउनलोड करें → खोलें → इंस्टॉल।
+            पुराना ऐप हटाने की ज़रूरत नहीं — ऊपर से इंस्टॉल करें, डेटा नहीं मिटेगा।
+          files: marwar-rasoi.apk
+          make_latest: true
+      # 🧹 पुरानी APK रिलीज़ हटाओ — आख़िरी 5 रहें (डाउनलोड का लिंक "latest" वही रहता है)
+      - name: पुरानी रिलीज़ साफ़
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list -R "${{ github.repository }}" --limit 200 --json tagName,createdAt -q 'sort_by(.createdAt)|reverse|.[5:]|.[].tagName' | while read t; do
+            [ -n "$t" ] && gh release delete "$t" -R "${{ github.repository }}" --yes --cleanup-tag || true; done

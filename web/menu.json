@@ -1,0 +1,692 @@
+{
+ "app": "mh177-rasoi",
+ "v": 1,
+ "shop": {
+  "name": "MARWAR RASOI",
+  "hi": "मारवाड़ रसोई",
+  "tag": "Pure taste of Marwar · Veg & Non-Veg",
+  "phones": [
+   "8696283600",
+   "6367183480",
+   "7665326484"
+  ],
+  "hours": [
+   [
+    "11:30",
+    "14:30",
+    "Lunch"
+   ],
+   [
+    "18:30",
+    "22:30",
+    "Dinner"
+   ]
+  ],
+  "freeDelivery": true,
+  "note": "Cold drinks on MRP"
+ },
+ "cats": [
+  {
+   "k": "veg",
+   "n": "Veg Main Course",
+   "em": "🥘"
+  },
+  {
+   "k": "nonveg",
+   "n": "Non-Veg Main Course",
+   "em": "🍗"
+  },
+  {
+   "k": "bread",
+   "n": "Naan & Tandoori Roti",
+   "em": "🫓"
+  },
+  {
+   "k": "rice",
+   "n": "Rice, Pulao & Biryani",
+   "em": "🍚"
+  },
+  {
+   "k": "biryani",
+   "n": "Chicken Biryani",
+   "em": "🍛"
+  },
+  {
+   "k": "fish",
+   "n": "Fish (Masala / Curry)",
+   "em": "🐟"
+  },
+  {
+   "k": "extra",
+   "n": "Salad, Dahi & Water",
+   "em": "🥗"
+  }
+ ],
+ "items": [
+  {
+   "id": "rs-dal-tadka",
+   "n": "DAL TADKA",
+   "hi": "दाल तड़का",
+   "s": 150,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍲",
+   "p": "menu/rs-dal-tadka.jpg"
+  },
+  {
+   "id": "rs-dal-fry",
+   "n": "DAL FRY",
+   "hi": "दाल फ्राई",
+   "s": 150,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍲",
+   "p": "menu/rs-dal-fry.jpg"
+  },
+  {
+   "id": "rs-mushroom-masala",
+   "n": "MUSHROOM MASALA",
+   "s": 209,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍄",
+   "p": "menu/rs-mushroom-masala.jpg"
+  },
+  {
+   "id": "rs-mushroom-paneer",
+   "n": "MUSHROOM PANEER",
+   "s": 209,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍄",
+   "p": "menu/rs-mushroom-paneer.jpg"
+  },
+  {
+   "id": "rs-mushroom-matar",
+   "n": "MUSHROOM MATAR",
+   "s": 209,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍄",
+   "p": "menu/rs-mushroom-matar.jpg"
+  },
+  {
+   "id": "rs-mushroom-kaju-masala",
+   "n": "MUSHROOM KAJU MASALA",
+   "s": 259,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍄",
+   "p": "menu/rs-mushroom-kaju-masala.jpg"
+  },
+  {
+   "id": "rs-kaju-masala",
+   "n": "KAJU MASALA",
+   "s": 259,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🥜",
+   "p": "menu/rs-kaju-masala.jpg"
+  },
+  {
+   "id": "rs-kaju-paneer-masala",
+   "n": "KAJU PANEER MASALA",
+   "s": 259,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🥜",
+   "p": "menu/rs-kaju-paneer-masala.jpg"
+  },
+  {
+   "id": "rs-kaju-curry",
+   "n": "KAJU CURRY",
+   "hi": "काजू करी",
+   "s": 259,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🥜",
+   "p": "menu/rs-kaju-curry.jpg"
+  },
+  {
+   "id": "rs-matar-paneer",
+   "n": "MATAR PANEER",
+   "hi": "मटर पनीर",
+   "s": 190,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-matar-paneer.jpg"
+  },
+  {
+   "id": "rs-shahi-paneer",
+   "n": "SHAHI PANEER",
+   "hi": "शाही पनीर",
+   "s": 210,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-shahi-paneer.jpg"
+  },
+  {
+   "id": "rs-paneer-butter-masala",
+   "n": "PANEER BUTTER MASALA",
+   "hi": "पनीर बटर मसाला",
+   "s": 190,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-paneer-butter-masala.jpg"
+  },
+  {
+   "id": "rs-paneer-lababdar",
+   "n": "PANEER LABABDAR",
+   "s": 210,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-paneer-lababdar.jpg"
+  },
+  {
+   "id": "rs-paneer-bhurji",
+   "n": "PANEER BHURJI",
+   "s": 230,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-paneer-bhurji.jpg"
+  },
+  {
+   "id": "rs-paneer-handi",
+   "n": "PANEER HANDI",
+   "s": 190,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-paneer-handi.jpg"
+  },
+  {
+   "id": "rs-paneer-masala",
+   "n": "PANEER MASALA",
+   "s": 190,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-paneer-masala.jpg"
+  },
+  {
+   "id": "rs-kadai-paneer",
+   "n": "KADAI PANEER",
+   "hi": "कड़ाही पनीर",
+   "s": 190,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🧀",
+   "p": "menu/rs-kadai-paneer.jpg"
+  },
+  {
+   "id": "rs-mix-veg",
+   "n": "MIX VEG",
+   "hi": "मिक्स वेज",
+   "s": 170,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🥕",
+   "p": "menu/rs-mix-veg.jpg"
+  },
+  {
+   "id": "rs-sev-tamatar",
+   "n": "SEV TAMATAR",
+   "hi": "सेव टमाटर",
+   "s": 170,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍅",
+   "p": "menu/rs-sev-tamatar.jpg"
+  },
+  {
+   "id": "rs-manchurian-gravy",
+   "n": "MANCHURIAN GRAVY",
+   "s": 140,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🥢",
+   "p": "menu/rs-manchurian-gravy.jpg"
+  },
+  {
+   "id": "rs-manchurian-dry",
+   "n": "MANCHURIAN DRY",
+   "s": 120,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🥢",
+   "p": "menu/rs-manchurian-dry.jpg"
+  },
+  {
+   "id": "rs-paneer-tikka",
+   "n": "PANEER TIKKA",
+   "hi": "पनीर टिक्का",
+   "s": 260,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍢",
+   "p": "menu/rs-paneer-tikka.jpg"
+  },
+  {
+   "id": "rs-chilli-paneer-gravy",
+   "n": "CHILLI PANEER GRAVY",
+   "s": 190,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🌶️",
+   "p": "menu/rs-chilli-paneer-gravy.jpg"
+  },
+  {
+   "id": "rs-chilli-paneer-dry",
+   "n": "CHILLI PANEER DRY",
+   "s": 190,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🌶️",
+   "p": "menu/rs-chilli-paneer-dry.jpg"
+  },
+  {
+   "id": "rs-paneer-malai-tikka",
+   "n": "PANEER MALAI TIKKA",
+   "s": 260,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍢",
+   "p": "menu/rs-paneer-malai-tikka.jpg"
+  },
+  {
+   "id": "rs-paneer-hariyali-tikka",
+   "n": "PANEER HARIYALI TIKKA",
+   "s": 240,
+   "u": "pl",
+   "c": "veg",
+   "veg": true,
+   "em": "🍢",
+   "p": "menu/rs-paneer-hariyali-tikka.jpg"
+  },
+  {
+   "id": "rs-kadai-chicken",
+   "n": "KADAI CHICKEN",
+   "hi": "कड़ाही चिकन",
+   "s": 240,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-kadai-chicken.jpg"
+  },
+  {
+   "id": "rs-chicken-curry",
+   "n": "CHICKEN CURRY",
+   "hi": "चिकन करी",
+   "s": 240,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-chicken-curry.jpg"
+  },
+  {
+   "id": "rs-chicken-handi",
+   "n": "CHICKEN HANDI",
+   "s": 240,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-chicken-handi.jpg"
+  },
+  {
+   "id": "rs-masala-chicken",
+   "n": "MASALA CHICKEN",
+   "s": 240,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-masala-chicken.jpg"
+  },
+  {
+   "id": "rs-garlic-chicken",
+   "n": "GARLIC CHICKEN",
+   "s": 280,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🧄",
+   "p": "menu/rs-garlic-chicken.jpg"
+  },
+  {
+   "id": "rs-butter-chicken",
+   "n": "BUTTER CHICKEN",
+   "hi": "बटर चिकन",
+   "s": 280,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-butter-chicken.jpg"
+  },
+  {
+   "id": "rs-desi-chicken-half",
+   "n": "DESI CHICKEN (HALF)",
+   "s": 500,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🐓",
+   "p": "menu/rs-desi-chicken-half.jpg"
+  },
+  {
+   "id": "rs-desi-chicken-full",
+   "n": "DESI CHICKEN (FULL)",
+   "s": 1000,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🐓",
+   "p": "menu/rs-desi-chicken-full.jpg"
+  },
+  {
+   "id": "rs-chilli-chicken-dry",
+   "n": "CHILLI CHICKEN DRY",
+   "s": 240,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🌶️",
+   "p": "menu/rs-chilli-chicken-dry.jpg"
+  },
+  {
+   "id": "rs-chicken-chilli-gravy",
+   "n": "CHICKEN CHILLI GRAVY",
+   "s": 260,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🌶️",
+   "p": "menu/rs-chicken-chilli-gravy.jpg"
+  },
+  {
+   "id": "rs-tandoori-chicken-plate",
+   "n": "TANDOORI CHICKEN (PLATE)",
+   "s": 280,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-tandoori-chicken-plate.jpg"
+  },
+  {
+   "id": "rs-tandoori-chicken-half",
+   "n": "TANDOORI CHICKEN (HALF)",
+   "hi": "तंदूरी चिकन (हाफ़)",
+   "s": 450,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-tandoori-chicken-half.jpg"
+  },
+  {
+   "id": "rs-tandoori-chicken-full",
+   "n": "TANDOORI CHICKEN (FULL)",
+   "hi": "तंदूरी चिकन (फुल)",
+   "s": 850,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍗",
+   "p": "menu/rs-tandoori-chicken-full.jpg"
+  },
+  {
+   "id": "rs-chicken-tikka",
+   "n": "CHICKEN TIKKA",
+   "s": 260,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍢",
+   "p": "menu/rs-chicken-tikka.jpg"
+  },
+  {
+   "id": "rs-chicken-hariyali-tikka",
+   "n": "CHICKEN HARIYALI TIKKA",
+   "s": 280,
+   "u": "pl",
+   "c": "nonveg",
+   "veg": false,
+   "em": "🍢",
+   "p": "menu/rs-chicken-hariyali-tikka.jpg"
+  },
+  {
+   "id": "rs-plain-tandoori-roti",
+   "n": "PLAIN TANDOORI ROTI",
+   "hi": "तंदूरी रोटी",
+   "s": 15,
+   "u": "pc",
+   "c": "bread",
+   "veg": true,
+   "em": "🫓",
+   "p": "menu/rs-plain-tandoori-roti.jpg"
+  },
+  {
+   "id": "rs-butter-tandoori-roti",
+   "n": "BUTTER TANDOORI ROTI",
+   "hi": "बटर तंदूरी रोटी",
+   "s": 19,
+   "u": "pc",
+   "c": "bread",
+   "veg": true,
+   "em": "🫓",
+   "p": "menu/rs-butter-tandoori-roti.jpg"
+  },
+  {
+   "id": "rs-plain-naan",
+   "n": "PLAIN NAAN",
+   "s": 40,
+   "u": "pc",
+   "c": "bread",
+   "veg": true,
+   "em": "🫓",
+   "p": "menu/rs-plain-naan.jpg"
+  },
+  {
+   "id": "rs-butter-naan",
+   "n": "BUTTER NAAN",
+   "hi": "बटर नान",
+   "s": 45,
+   "u": "pc",
+   "c": "bread",
+   "veg": true,
+   "em": "🫓",
+   "p": "menu/rs-butter-naan.jpg"
+  },
+  {
+   "id": "rs-garlic-naan",
+   "n": "GARLIC NAAN",
+   "hi": "गार्लिक नान",
+   "s": 80,
+   "u": "pc",
+   "c": "bread",
+   "veg": true,
+   "em": "🫓",
+   "p": "menu/rs-garlic-naan.jpg"
+  },
+  {
+   "id": "rs-lachha-paratha",
+   "n": "LACHHA PARATHA",
+   "hi": "लच्छा पराठा",
+   "s": 45,
+   "u": "pc",
+   "c": "bread",
+   "veg": true,
+   "em": "🫓",
+   "p": "menu/rs-lachha-paratha.jpg"
+  },
+  {
+   "id": "rs-jeera-rice",
+   "n": "JEERA RICE",
+   "hi": "जीरा राइस",
+   "s": 110,
+   "u": "pl",
+   "c": "rice",
+   "veg": true,
+   "em": "🍚",
+   "p": "menu/rs-jeera-rice.jpg"
+  },
+  {
+   "id": "rs-fried-rice",
+   "n": "FRIED RICE",
+   "s": 150,
+   "u": "pl",
+   "c": "rice",
+   "veg": true,
+   "em": "🍚",
+   "p": "menu/rs-fried-rice.jpg"
+  },
+  {
+   "id": "rs-veg-pulao",
+   "n": "VEG PULAO",
+   "s": 160,
+   "u": "pl",
+   "c": "rice",
+   "veg": true,
+   "em": "🍚",
+   "p": "menu/rs-veg-pulao.jpg"
+  },
+  {
+   "id": "rs-plain-rice",
+   "n": "PLAIN RICE",
+   "s": 90,
+   "u": "pl",
+   "c": "rice",
+   "veg": true,
+   "em": "🍚",
+   "p": "menu/rs-plain-rice.jpg"
+  },
+  {
+   "id": "rs-veg-biryani",
+   "n": "VEG BIRYANI",
+   "hi": "वेज बिरयानी",
+   "s": 170,
+   "u": "pl",
+   "c": "rice",
+   "veg": true,
+   "em": "🍛",
+   "p": "menu/rs-veg-biryani.jpg"
+  },
+  {
+   "id": "rs-chicken-biryani",
+   "n": "CHICKEN BIRYANI",
+   "hi": "चिकन बिरयानी",
+   "s": 219,
+   "u": "pl",
+   "c": "biryani",
+   "veg": false,
+   "em": "🍛",
+   "p": "menu/rs-chicken-biryani.jpg"
+  },
+  {
+   "id": "rs-hyderabadi-chicken-biryani",
+   "n": "HYDERABADI CHICKEN BIRYANI",
+   "s": 239,
+   "u": "pl",
+   "c": "biryani",
+   "veg": false,
+   "em": "🍛",
+   "p": "menu/rs-hyderabadi-chicken-biryani.jpg"
+  },
+  {
+   "id": "rs-chicken-dum-biryani",
+   "n": "CHICKEN DUM BIRYANI",
+   "s": 239,
+   "u": "pl",
+   "c": "biryani",
+   "veg": false,
+   "em": "🍛",
+   "p": "menu/rs-chicken-dum-biryani.jpg"
+  },
+  {
+   "id": "rs-fish-curry",
+   "n": "FISH CURRY",
+   "hi": "फिश करी",
+   "s": 240,
+   "u": "pl",
+   "c": "fish",
+   "veg": false,
+   "em": "🐟",
+   "p": "menu/rs-fish-curry.jpg"
+  },
+  {
+   "id": "rs-fish-masala",
+   "n": "FISH MASALA",
+   "s": 240,
+   "u": "pl",
+   "c": "fish",
+   "veg": false,
+   "em": "🐟",
+   "p": "menu/rs-fish-masala.jpg"
+  },
+  {
+   "id": "rs-green-salad",
+   "n": "GREEN SALAD",
+   "s": 40,
+   "u": "pc",
+   "c": "extra",
+   "veg": true,
+   "em": "🥗",
+   "p": "menu/rs-green-salad.jpg"
+  },
+  {
+   "id": "rs-dahi",
+   "n": "DAHI",
+   "hi": "दही",
+   "s": 40,
+   "u": "pc",
+   "c": "extra",
+   "veg": true,
+   "em": "🥣",
+   "p": "menu/rs-dahi.jpg"
+  },
+  {
+   "id": "rs-water-bottle",
+   "n": "WATER BOTTLE",
+   "s": 20,
+   "u": "pc",
+   "c": "extra",
+   "veg": true,
+   "em": "💧"
+  }
+ ],
+ "updated": "2026-11-11"
+}

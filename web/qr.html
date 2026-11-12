@@ -1,0 +1,13 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Marwar Rasoi — टेबल QR कार्ड</title>
+<style>@page{size:A4;margin:8mm}body{margin:0;font-family:Georgia,serif;background:#eee}.bar{font:700 14px system-ui;padding:10px;text-align:center}.bar button{font:inherit;padding:8px 16px;border-radius:10px;border:0;background:#7a1c1c;color:#fff}
+.sheet{display:grid;grid-template-columns:1fr 1fr;gap:6mm;padding:6mm;background:#fff;max-width:210mm;margin:0 auto}
+.c{border:2.5px solid #7a1c1c;outline:1px solid #e2b55a;outline-offset:-5px;border-radius:5mm;padding:5mm 4mm 4mm;text-align:center;break-inside:avoid;background:#fffaf0}
+.c h2{margin:0;font-size:19pt;letter-spacing:2px;color:#7a1c1c}.c small{display:block;font:600 8.5pt system-ui;color:#7a5a2a}.c .n{font:800 30pt Georgia;color:#24160a;margin:1mm 0}.c .n span{font-size:11pt;letter-spacing:3px;display:block;color:#7a1c1c}
+.q{width:46mm;height:46mm;margin:2mm auto}.q img,.q canvas{width:46mm!important;height:46mm!important}.c p{margin:1.5mm 0 0;font:700 9.5pt system-ui}.c em{font:600 8pt system-ui;color:#7a5a2a;font-style:normal}
+@media print{.bar{display:none}body{background:#fff}.sheet{padding:0}}</style></head><body>
+<div class="bar">🖨️ 16 टेबल के QR कार्ड (A4 पर 6-6) — <button onclick="print()">छापें / PDF बनाएँ</button></div><div class="sheet" id="s"></div>
+<script src="config.js"></script><script src="lib/qrcode.min.js"></script><script>
+const C = window.MR_CONFIG, base = (location.protocol.startsWith("http") && !/^(localhost|127\.)/.test(location.hostname) ? location.href.replace(/qr\.html.*$/, "") : C.base);
+for (let n = 1; n <= C.tables; n++) { const d = document.createElement("div"); d.className = "c"; d.innerHTML = `<h2>MARWAR RASOI</h2><small>${C.place}</small><div class="n"><span>TABLE</span>${n}</div><div class="q" id="q${n}"></div><p>📷 Scan · Order · Call waiter</p><em>स्कैन करें — मेन्यू देखें, ऑर्डर करें, पानी/वेटर/बिल बुलाएँ</em>`; document.getElementById("s").appendChild(d);
+  new QRCode(document.getElementById("q" + n), { text: base + "t/?t=" + n, width: 440, height: 440, correctLevel: QRCode.CorrectLevel.M }) }
+</script></body></html>
