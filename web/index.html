@@ -25,7 +25,7 @@ function login() {
   b.onclick = e => { const r = e.target.closest("[data-r]"); if (r) { role = r.dataset.r; $$("#lr button", b).forEach(x => x.classList.toggle("on", x === r)) }
     if (e.target.id === "lgo") { const n = $("#ln", b).value.trim(); if (!n) return toast("नाम लिखें"); ME = { name: n, role }; LS.set("mr_me", ME); closeSheet(); BELL.beep(); draw() } };
 }
-const act = (id, p) => { DB.upd(id, p, ME.name) };
+const act = (id, p) => DB.upd(id, p, ME.name).catch(e => toast("सेव नहीं हुआ — नेट देखें"));
 const card = o => {
   const s = ST[o.status], late = isLate(o), isCall = o.kind === "call";
   const btn = isCall ? (o.status === "new" ? `<button class="btn ok" data-a="done" data-id="${o.id}">✔ जा रहे हैं</button>` : "")
@@ -76,8 +76,9 @@ function review() {
     const o = { kind: "order", type: TAKE.type, table: TAKE.type === "table" ? TAKE.table : 0, items: L, total: cartTotal(TAKE.cart), note: $("#nt", b).value.trim(), by: ME.name,
       name: ($("#cn", b) || {}).value || "", phone: (($("#cp", b) || {}).value || "").replace(/\D/g, ""), addr: ($("#ca", b) || {}).value || "" };
     if (TAKE.type === "delivery" && !o.addr) return toast("पता लिखें");
-    const d = DB.add(o); DB.upd(d.id, { status: "acc", eta: (CFG.prep || [25])[1] || 25 }, ME.name); /* वेटर का लिया ऑर्डर सीधा स्वीकार — घंटी नहीं */
-    TAKE = { type: TAKE.type, table: 0, cart: {}, note: "" }; closeSheet(); toast("ऑर्डर रसोई में गया ✔"); TAB = "orders"; draw();
+    o.status = "acc"; o.eta = (CFG.prep || [25])[1] || 25; /* वेटर का लिया ऑर्डर सीधा स्वीकार — घंटी नहीं */
+    $("#send", b).disabled = true;
+    DB.add(o).then(() => { TAKE = { type: TAKE.type, table: 0, cart: {}, note: "" }; closeSheet(); toast("ऑर्डर रसोई में गया ✔"); TAB = "orders"; draw() }).catch(e => { $("#send", b).disabled = false; toast("नहीं गया — नेट देखें") });
   };
 }
 function vMore() {
@@ -87,21 +88,54 @@ function vMore() {
   return `<div class="h">📊 आज</div><div class="sum"><div><b>${ok.length}</b><small>ऑर्डर</small></div><div><b>${rs(ok.reduce((t, o) => t + o.total, 0))}</b><small>कुल</small></div><div><b>${avg ? avg + "s" : "—"}</b><small>औसत स्वीकार-समय</small></div></div>
   ${ME.role === "owner" ? `<div class="row" style="margin-top:8px">⏱ ${Math.round(WAIT / 60000)} मिनट से देर वाले ऑर्डर (मालिक तक पहुँचे): <b style="margin-left:auto">${esc}</b></div><div class="row">🧾 बिना TMBill नंबर के पूरे ऑर्डर: <b style="margin-left:auto">${T.filter(o => o.status === "done" && !o.tm).length}</b></div>` : ""}
   <div class="h">🛠️ औज़ार</div><a class="row" href="qr.html" target="_blank">🖨️ टेबल के QR कार्ड छापें (${CFG.tables})</a><a class="row" href="t/?t=1" target="_blank">📱 ग्राहक का टेबल-पेज देखें (टेबल 1)</a>
-  <button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button><button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`;
+  <button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button>${DB.mode === "fs" ? (ME.role === "owner" ? `<button class="row" data-a="team">👥 टीम — मैनेजर/वेटर जोड़ें, मंज़ूरी दें</button>` : "") + `<button class="row" data-a="logout">🚪 ${E(ME.name)} · ${ROLES[ME.role]} — लॉगआउट</button>` : `<button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
 }
 function onAct(e, after) {
   const a = e.target.closest("[data-a]"); if (!a) return false; const id = a.dataset.id, k = a.dataset.a;
   if (k === "sil") { pend().forEach(o => SIL[o.id] = 1); ring() }
-  else if (k === "bell") BELL.beep(); else if (k === "login") login();
+  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "logout") return logout(), true;
   else if (k === "acc") { const b = sheet(`<h3>✅ कितने मिनट में तैयार?</h3><div class="seg">${(CFG.prep || [15, 25, 35]).map(m => `<button data-m="${m}" style="flex:1">${m} मिनट</button>`).join("")}</div>`); b.onclick = x => { const m = x.target.closest("[data-m]"); if (m) { act(id, { status: "acc", eta: +m.dataset.m }); closeSheet(); (after || draw)() } }; return true }
   else if (k === "rej") { const b = sheet(`<h3>❌ मना करने का कारण</h3><div class="seg">${["डिश खत्म", "रसोई बंद", "बहुत भीड़", "ग्राहक ने रद्द किया"].map(r => `<button data-r="${r}">${r}</button>`).join("")}</div>`); b.onclick = x => { const r = x.target.closest("[data-r]"); if (r) { act(id, { status: "rej", why: r.dataset.r }); closeSheet(); (after || draw)() } }; return true }
   else if (k === "done" && (ALL.find(o => o.id === id) || {}).kind !== "call") { const b = sheet(`<h3>✔ पूरा — TMBill का बिल नंबर</h3><input class="in" id="tmn" inputmode="numeric" placeholder="TMBill बिल नं. (पक्का बिल वहीं बनता है)"><button class="btn ok big" id="tmo">पूरा करें</button>`); $("#tmo", b).onclick = () => { act(id, { status: "done", tm: $("#tmn", b).value.trim() }); closeSheet(); (after || draw)() }; return true }
   else if (id) act(id, { status: k });
   after && after(); return true;
 }
-function ring() { const n = pend().length, nb = $("#nb"); nb.hidden = !n; nb.textContent = n; BELL.set(!!ME && ringFor().length > 0) }
+function ring() { const n = pend().length, nb = $("#nb"); nb.hidden = !n; nb.textContent = n; BELL.set(!!ME && !NAT() && ringFor().length > 0) /* APK में असली अलार्म सेवा बजाती है */ }
+/* ───── असली मोड (Firebase): मोबाइल + पिन से लॉगिन, मालिक की मंज़ूरी, टीम, APK की घंटी/लोकेशन ───── */
+const AERR = m => /EMAIL_EXISTS/.test(m) ? "यह नंबर पहले से है — लॉगिन करें" : /INVALID|NOT_FOUND|PASSWORD/.test(m) && !/WEAK/.test(m) ? "नंबर या पिन ग़लत है" : /WEAK/.test(m) ? "पिन कम से कम 6 अंक का रखें" : "नहीं हुआ — नेट देखें";
+function fsLogin() {
+  const b = sheet(`<h3>🔐 Marwar Rasoi — लॉगिन</h3><input class="in" id="fp" inputmode="numeric" maxlength="10" placeholder="मोबाइल नंबर (10 अंक)"><input class="in" id="fk" type="password" inputmode="numeric" placeholder="पिन (कम से कम 6 अंक)">
+  <input class="in" id="fn" placeholder="आपका नाम (सिर्फ़ नया खाता बनाते समय)"><button class="btn big" id="fin">लॉगिन</button><button class="btn gh big" id="fup" style="margin-top:6px">नया खाता बनाएँ</button>`);
+  $(".scrim", b.parentNode).removeAttribute("data-x");
+  const go = async up => { const ph = $("#fp", b).value.replace(/\D/g, ""), pin = $("#fk", b).value, nm = $("#fn", b).value.trim();
+    if (ph.length !== 10) return toast("10 अंक का मोबाइल नंबर लिखें"); if (pin.length < 6) return toast("पिन कम से कम 6 अंक का"); if (up && !nm) return toast("नाम लिखें");
+    try { await (up ? AUTH.signUp(ph, pin) : AUTH.signIn(ph, pin)); if (nm) LS.set("mr_name", nm); closeSheet(); boot() } catch (e) { toast(AERR(e.message)) } };
+  $("#fin", b).onclick = () => go(false); $("#fup", b).onclick = () => go(true);
+}
+async function native() { const P = NAT(); if (!P || !AUTH.u || !ME) return;
+  try { await P.ringStart({ rt: AUTH.u.rt, key: FB.apiKey, pid: FB.projectId, every: 15, open: -1, close: -1, loud: true, wait: ME.role === "owner" ? (CFG.ownerWait || 180) : 0, name: ME.name, ask: true }) } catch (e) { }
+  try { if (ME.role !== "owner") await P.trackStart({ name: ME.name }) } catch (e) { } }
+function logout() { const P = NAT(); try { P && P.ringStop(); P && P.authClear() } catch (e) { } AUTH.out(); ME = null; LS.set("mr_me", null); closeSheet(); boot() }
+async function team() {
+  const b = sheet(`<h3>👥 टीम</h3><div id="tl" class="empty">…</div>`); let L = [];
+  const show = () => $("#tl", b).outerHTML = `<div id="tl">${L.sort((a, c) => (a.role === "pending" ? 0 : 1) - (c.role === "pending" ? 0 : 1)).map(u => `<div class="row" style="flex-wrap:wrap"><span>${E(u.name)} · 📞 ${E(u.phone || "")}${u.role === "pending" ? " · <b style='color:#b91c1c'>मंज़ूरी बाकी</b>" : ""}</span><span class="seg" style="margin:0 0 0 auto">${u.role === "owner" ? "<b>मालिक</b>" : [["manager", "मैनेजर"], ["waiter", "वेटर"], ["off", "बंद"]].map(([r, l]) => `<button data-u="${u.id}" data-r="${r}" class="${u.role === r ? "on" : ""}" style="padding:4px 8px;font-size:12.5px">${l}</button>`).join("")}</span></div>`).join("") || "<div class='empty'>अभी कोई नहीं जुड़ा — साथी ऐप खोलकर 'नया खाता बनाएँ' दबाएँ</div>"}</div>`;
+  try { L = await fsQuery({ from: [{ collectionId: "staff" }], limit: 100 }); show() } catch (e) { $("#tl", b).textContent = "सूची नहीं खुली" }
+  b.onclick = async e => { const x = e.target.closest("[data-u]"); if (!x) return; try { await fs("PATCH", `/staff/${x.dataset.u}?updateMask.fieldPaths=role`, { fields: encF({ role: x.dataset.r }) }); L.find(u => u.id === x.dataset.u).role = x.dataset.r; show(); toast("बदल दिया ✔") } catch (er) { toast("नहीं बदला") } };
+}
+async function boot() {
+  if (DB.mode === "local") { DB.start(); return draw() }
+  if (!AUTH.u) return fsLogin();
+  try { let st = await fsGet("staff", AUTH.u.uid);
+    if (!st) { const base = { name: LS.get("mr_name", "") || AUTH.u.ph, phone: AUTH.u.ph, ts: now() };
+      try { await fsSet("staff", AUTH.u.uid, Object.assign({ role: "owner" }, base)); st = Object.assign({ role: "owner" }, base) } /* नियम सिर्फ़ मालिक के नंबर को यह करने देते हैं */
+      catch (e) { await fsSet("staff", AUTH.u.uid, Object.assign({ role: "pending" }, base)); st = Object.assign({ role: "pending" }, base) } }
+    ME = { name: st.name, role: st.role, uid: AUTH.u.uid }; LS.set("mr_me", ME)
+  } catch (e) { if (!AUTH.u) return fsLogin(); if (!ME) { $("#pg").innerHTML = `<div class="empty">📶 नेट नहीं है या लॉगिन पुराना हो गया<br><br><button class="btn" onclick="boot()">फिर कोशिश</button> <button class="btn gh" onclick="logout()">दोबारा लॉगिन</button></div>`; return } }
+  if (!ROLES[ME.role]) { $("#me").textContent = "👤 " + ME.name; $("#pg").innerHTML = `<div class="empty">⏳ <b>${E(ME.name)}</b>, आपका खाता बन गया है।<br>${ME.role === "off" ? "यह खाता बंद है" : "मालिक की मंज़ूरी बाकी है"} — विक्रम जी से कहें कि ऐप के ☰ और → 👥 टीम में आपको मैनेजर/वेटर बनाएँ।<br><br><button class="btn" onclick="boot()">🔄 फिर देखें</button> <button class="btn gh" onclick="logout()">लॉगआउट</button></div>`; return }
+  DB.start({ staff: true }); native(); draw();
+}
 function draw() {
-  if (!ME) return login();
+  if (!ME) return DB.mode === "local" ? login() : boot();
   $("#me").textContent = "👤 " + ME.name; $("#demo").hidden = DB.mode !== "local";
   $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === TAB));
   const pg = $("#pg"); pg.innerHTML = TAB === "orders" ? vOrders() : TAB === "tables" ? vTables() : TAB === "take" ? vTake() : vMore();
@@ -109,11 +143,11 @@ function draw() {
   bar(); ring();
 }
 $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (b) { TAB = b.dataset.t; draw(); scrollTo(0, 0) } };
-$("#me").onclick = login; $("#bar").onclick = review;
+$("#me").onclick = () => DB.mode === "local" ? login() : (TAB = "more", draw()); $("#bar").onclick = review;
 $("#pg").addEventListener("click", e => {
   const tb = e.target.closest("[data-tb]"), ty = e.target.closest("[data-ty]"), tn = e.target.closest("[data-tn]");
   if (tb) tableSheet(+tb.dataset.tb); else if (ty) { TAKE.type = ty.dataset.ty; draw() } else if (tn) { TAKE.table = +tn.dataset.tn; $$(".tsel button").forEach(x => x.classList.toggle("on", x === tn)) } else onAct(e);
 });
 { const tp = $(".top"), th = () => document.documentElement.style.setProperty("--th", tp.offsetHeight + "px"); th(); addEventListener("resize", th) }
-MENU.load().then(() => { DB.on(a => { ALL = a; if (TAB !== "take" && !$("#sheet.open")) draw(); else ring() }); setInterval(() => { if (TAB === "orders" && !$("#sheet.open")) draw(); else ring() }, 15000) });
+MENU.load().then(() => { boot(); let LAST = ""; DB.on(a => { ALL = a; const h = JSON.stringify(a) + DB.err; if (h === LAST) return ring(); LAST = h; if (TAB !== "take" && !$("#sheet.open")) draw(); else ring() }); setInterval(() => { if (TAB === "orders" && !$("#sheet.open")) draw(); else ring() }, 15000) });
 </script></body></html>

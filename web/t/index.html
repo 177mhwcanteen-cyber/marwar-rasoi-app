@@ -1,41 +1,54 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Marwar Rasoi — Order from your table</title><meta name="theme-color" content="#7a1c1c"><link rel="icon" href="../icon.png"><link rel="stylesheet" href="../app.css">
-<style>body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}.bar{bottom:calc(10px + env(safe-area-inset-bottom))}</style></head><body>
+<title>Marwar Rasoi — Order online</title><meta name="theme-color" content="#7a1c1c"><link rel="icon" href="../icon.png"><link rel="stylesheet" href="../app.css">
+<style>body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}.bar{bottom:calc(10px + env(safe-area-inset-bottom))}
+.hero{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:8px 0 2px;display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px}.hero b{color:var(--m)}.hero.cl{background:#fee2e2;border-color:#fca5a5}</style></head><body>
 <div class="top"><div><h1>MARWAR RASOI</h1><small id="sub">Amenity Centre, Jalipa</small></div><span class="me" id="tno"></span></div>
 <div class="demo" id="demo" hidden>Demo mode — orders stay on this phone until the restaurant goes live</div>
-<div class="pg"><div class="calls" id="calls"></div><div id="trk"></div><div class="h">🍽️ Menu <small>मेन्यू — tap ADD</small></div><div id="menu"></div></div>
+<div class="pg"><div class="calls" id="calls"></div><div id="hero"></div><div id="trk"></div><div class="h">🍽️ Menu <small>मेन्यू — tap ADD</small></div><div id="menu"></div></div>
 <button class="bar" id="bar" hidden></button>
 <script src="../config.js"></script><script src="../core.js" data-root="../"></script>
 <script>
-/* मारवाड़ रसोई — टेबल-QR पेज (ग्राहक): …/t/?t=5 → ऑर्डर, 💧 पानी, 🙋 वेटर, 🧾 बिल, ऑर्डर की हालत */
+/* मारवाड़ रसोई — ग्राहक का पेज।  …/t/?t=5 = टेबल 5 (ऑर्डर + 💧 पानी / 🙋 वेटर / 🧾 बिल)   ·   …/t/ (बिना t) = घर से ऑर्डर (🛵 Delivery / 🥡 Pickup) */
 const T = Math.max(0, Math.min(CFG.tables || 16, parseInt(new URLSearchParams(location.search).get("t") || "0", 10) || 0));
-const cart = {}, MINE = "mr_mine_" + T; let ALL = [];
-const mine = () => { const ids = LS.get(MINE, []).filter(x => x.ts > now() - 6 * 3600e3).map(x => x.id); return ALL.filter(o => ids.includes(o.id)) };
-const remember = o => { const a = LS.get(MINE, []); a.push({ id: o.id, ts: o.ts }); LS.set(MINE, a.slice(-30)); ALL = DB.all(); calls(); track() };
-$("#tno").textContent = T ? "Table " + T : "No table";
+const cart = {}, MINE = "mr_mine_" + T; let ALL = [], HOME = LS.get("mr_home", { type: "delivery", name: "", phone: "", addr: "" });
+const myIds = () => LS.get(MINE, []).filter(x => x.ts > now() - 8 * 3600e3).map(x => x.id);
+const mine = () => { const ids = myIds(); return ALL.filter(o => ids.includes(o.id)) };
+const remember = o => { const a = LS.get(MINE, []); a.push({ id: o.id, ts: o.ts }); LS.set(MINE, a.slice(-30)); ALL = DB.all(); DB.poll(); calls(); track() };
+$("#tno").textContent = T ? "Table " + T : "🛵 Home order";
 function calls() {
+  if (!T) { $("#calls").hidden = true; const s = shopOpen(); $("#hero").innerHTML = s.open ? `<div class="hero">🛵 <span><b>Free home delivery</b> · No minimum order · Cash / UPI on delivery</span></div>` : `<div class="hero cl">🕐 <span>Kitchen is closed right now — <b>opens ${s.next}</b>. You can still see the menu.</span></div>`; return }
   const open = mine().filter(o => o.kind === "call" && o.status === "new");
   $("#calls").innerHTML = Object.keys(CALLS).map(k => { const s = open.find(o => o.call === k); return `<button data-call="${k}" class="${s ? "sent" : ""}"><span>${CALLS[k].ic}</span>${s ? "Coming…" : CALLS[k].en}</button>` }).join("");
 }
 function track() {
   const L = mine().filter(o => o.kind !== "call" && o.status !== "done").sort((a, b) => b.ts - a.ts);
-  $("#trk").innerHTML = L.map(o => { const i = FLOW.indexOf(o.status), rej = o.status === "rej";
-    return `<div class="trk"><b>${rej ? "❌ Sorry, this order was cancelled" + (o.why ? " — " + E(o.why) : "") : o.status === "new" ? "🕐 Order sent — waiting for the kitchen" : o.status === "out" ? "🍽️ Served — enjoy your meal!" : (o.status === "cook" ? "👨‍🍳 Cooking" : "✅ Accepted") + (o.eta ? " · ready in ~" + Math.max(1, o.eta - mins((o.log.find(l => l.s === "acc") || o).ts)) + " min" : "")}</b>
-    ${rej ? "" : `<div class="steps">${FLOW.slice(0, 4).map((s, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>`}<small>${o.items.map(l => l.q + "× " + E(l.n)).join(", ")} · <b>${rs(o.total)}</b></small></div>` }).join("");
+  $("#trk").innerHTML = L.map(o => { const i = FLOW.indexOf(o.status), rej = o.status === "rej", tb = o.type === "table";
+    return `<div class="trk"><b>${rej ? "❌ Sorry, this order was cancelled" + (o.why ? " — " + E(o.why) : "") : o.status === "new" ? "🕐 Order sent — waiting for the kitchen" : o.status === "out" ? (tb ? "🍽️ Served — enjoy your meal!" : o.type === "parcel" ? "🥡 Ready — please collect" : "🛵 Out for delivery — reaching you soon") : (o.status === "cook" ? "👨‍🍳 Cooking" : "✅ Accepted") + (o.eta ? " · ready in ~" + Math.max(1, o.eta - mins(((o.log || []).find(l => l.s === "acc") || o).ts)) + " min" : "")}</b>
+    ${rej ? "" : `<div class="steps">${FLOW.slice(0, 4).map((s, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>`}<small>${(o.items || []).map(l => l.q + "× " + E(l.n)).join(", ")} · <b>${rs(o.total)}</b></small></div>` }).join("");
 }
 function bar() { const n = cartLines(cart).reduce((t, l) => t + l.q, 0), b = $("#bar"); b.hidden = !n; b.innerHTML = `<span>${n} item${n > 1 ? "s" : ""} · ${rs(cartTotal(cart))}</span><span>Place order ›</span>` }
 $("#calls").onclick = e => {
-  const c = e.target.closest("[data-call]"); if (!c) return; if (!T) return toast("Scan the QR on your table");
+  const c = e.target.closest("[data-call]"); if (!c) return;
   const k = c.dataset.call; if (mine().some(o => o.kind === "call" && o.call === k && o.status === "new")) return toast("Already called — coming!");
-  const last = LS.get("mr_lastcall", 0); if (now() - last < 20000) return toast("Please wait a moment…"); LS.set("mr_lastcall", now());
-  remember(DB.add({ kind: "call", call: k, type: "table", table: T, by: "customer" })); toast(CALLS[k].ic + " " + CALLS[k].en + " — coming to Table " + T);
+  if (now() - LS.get("mr_lastcall", 0) < 20000) return toast("Please wait a moment…"); LS.set("mr_lastcall", now());
+  DB.add({ kind: "call", call: k, type: "table", table: T, by: "customer" }).then(o => { remember(o); toast(CALLS[k].ic + " " + CALLS[k].en + " — coming to Table " + T) }).catch(() => toast("Could not send — check internet"));
 };
 $("#bar").onclick = () => {
-  if (!T) return toast("Scan the QR on your table"); const L = cartLines(cart);
-  const b = sheet(`<h3>Table ${T} — confirm your order</h3><div class="kot">${L.map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(l.n)}<span>${rs(l.q * l.s)}</span></div>`).join("")}</div>
-  <input class="in" id="nt" maxlength="120" placeholder="Any note? (less spicy, no onion…)"><button class="btn ok big" id="send">✅ Place order · ${rs(cartTotal(cart))}</button><div style="text-align:center;color:var(--mut);font-size:12.5px;margin-top:6px">Pay at the counter · Bill is made at the restaurant</div>`);
-  $("#send", b).onclick = () => { remember(DB.add({ kind: "order", type: "table", table: T, items: L, total: cartTotal(cart), note: $("#nt", b).value.trim(), by: "customer" })); Object.keys(cart).forEach(k => delete cart[k]); closeSheet(); M.draw(); bar(); toast("Order sent to the kitchen ✔"); scrollTo(0, 0) };
+  const L = cartLines(cart), so = shopOpen(); if (!T && !so.open) return toast("Kitchen opens at " + so.next);
+  const b = sheet(`<h3>${T ? "Table " + T : "Home order"} — confirm</h3><div class="kot">${L.map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(l.n)}<span>${rs(l.q * l.s)}</span></div>`).join("")}</div>
+  ${T ? "" : `<div class="seg" id="ht"><button data-h="delivery" class="${HOME.type === "delivery" ? "on" : ""}">🛵 Home delivery</button><button data-h="parcel" class="${HOME.type === "parcel" ? "on" : ""}">🥡 I will pick up</button></div>
+  <input class="in" id="hn" maxlength="40" placeholder="Your name" value="${E(HOME.name)}"><input class="in" id="hp" inputmode="numeric" maxlength="10" placeholder="Mobile number (10 digits)" value="${E(HOME.phone)}"><input class="in" id="ha" maxlength="80" placeholder="Quarter No. / Unit / Area" value="${E(HOME.addr)}">`}
+  <input class="in" id="nt" maxlength="120" placeholder="Any note? (less spicy, no onion…)"><button class="btn ok big" id="send">✅ Place order · ${rs(cartTotal(cart))}</button><div style="text-align:center;color:var(--mut);font-size:12.5px;margin-top:6px">${T ? "Pay at the counter · Bill is made at the restaurant" : "Free delivery · Pay cash / UPI when it arrives"}</div>`);
+  b.onclick = e => { const h = e.target.closest("[data-h]"); if (h) { HOME.type = h.dataset.h; $$("#ht button", b).forEach(x => x.classList.toggle("on", x === h)); $("#ha", b).hidden = HOME.type !== "delivery" } };
+  $("#send", b).onclick = () => {
+    const o = { kind: "order", type: T ? "table" : HOME.type, table: T, items: L, total: cartTotal(cart), note: $("#nt", b).value.trim(), by: "customer" };
+    if (!T) { HOME.name = $("#hn", b).value.trim(); HOME.phone = $("#hp", b).value.replace(/\D/g, ""); HOME.addr = $("#ha", b).value.trim();
+      if (!HOME.name) return toast("Please enter your name"); if (HOME.phone.length !== 10) return toast("Enter 10-digit mobile number"); if (HOME.type === "delivery" && HOME.addr.length < 3) return toast("Enter your quarter / address");
+      LS.set("mr_home", HOME); Object.assign(o, { name: HOME.name, phone: HOME.phone, addr: HOME.type === "delivery" ? HOME.addr : "" }) }
+    $("#send", b).disabled = true;
+    DB.add(o).then(d => { Object.keys(cart).forEach(k => delete cart[k]); closeSheet(); remember(d); M.draw(); bar(); toast("Order sent to the kitchen ✔"); scrollTo(0, 0) }).catch(() => { $("#send", b).disabled = false; toast("Could not send — check internet") });
+  };
 };
 let M; { const tp = $(".top"), th = () => document.documentElement.style.setProperty("--th", tp.offsetHeight + "px"); th(); addEventListener("resize", th) }
-MENU.load().then(() => { $("#demo").hidden = DB.mode !== "local"; M = menuUI($("#menu"), cart, bar, { en: 1 }); DB.on(a => { ALL = a; calls(); track() }); setInterval(track, 30000) });
+MENU.load().then(() => { $("#demo").hidden = DB.mode !== "local"; M = menuUI($("#menu"), cart, bar, { en: 1 }); DB.on(a => { ALL = a; calls(); track() }); DB.start({ ids: myIds }); setInterval(() => { track(); if (!T) calls() }, 30000) });
 </script></body></html>

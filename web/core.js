@@ -20,7 +20,62 @@ const ST = {
 const CALLS = { water: { ic: "💧", hi: "पानी", en: "Water" }, waiter: { ic: "🙋", hi: "वेटर बुलाया", en: "Call waiter" }, bill: { ic: "🧾", hi: "बिल माँगा", en: "Bill please" } };
 const where = o => o.type === "table" ? "🍽️ टेबल " + o.table : o.type === "parcel" ? "🥡 पार्सल" : "🛵 डिलीवरी";
 
-const DB = (() => {
+/* ───────── Firestore (REST, बिना SDK — हल्का) + लॉगिन (मोबाइल नंबर + पिन → Firebase Email/Password) ───────── */
+const FB = CFG.firebase || {}, FS_ON = !!FB.projectId;
+const FSB = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents`;
+const enc = v => v === null || v === undefined ? { nullValue: null } : typeof v === "boolean" ? { booleanValue: v } : typeof v === "number" ? (Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v })
+  : typeof v === "string" ? { stringValue: v } : Array.isArray(v) ? { arrayValue: { values: v.map(enc) } } : { mapValue: { fields: encF(v) } };
+const encF = o => Object.fromEntries(Object.keys(o).filter(k => o[k] !== undefined).map(k => [k, enc(o[k])]));
+const dec = v => "stringValue" in v ? v.stringValue : "integerValue" in v ? +v.integerValue : "doubleValue" in v ? v.doubleValue : "booleanValue" in v ? v.booleanValue
+  : "arrayValue" in v ? (v.arrayValue.values || []).map(dec) : "mapValue" in v ? decF(v.mapValue.fields || {}) : null;
+const decF = f => Object.fromEntries(Object.keys(f || {}).map(k => [k, dec(f[k])]));
+const docOf = d => Object.assign(decF(d.fields), { id: d.name.slice(d.name.lastIndexOf("/") + 1) });
+const mail = ph => String(ph).replace(/\D/g, "").slice(-10) + "@marwar-rasoi.app";
+const AUTH = {
+  u: LS.get("mr_auth", null),
+  save(r, ph) { this.u = { rt: r.refreshToken || r.refresh_token, idt: r.idToken || r.id_token, uid: r.localId || r.user_id, exp: now() + (+(r.expiresIn || r.expires_in || 3600)) * 1000, ph: ph || (this.u || {}).ph }; LS.set("mr_auth", this.u) },
+  async call(what, ph, pin) {
+    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${what}?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail(ph), password: pin, returnSecureToken: true }) });
+    const j = await r.json(); if (!r.ok) throw new Error((j.error || {}).message || "लॉगिन नहीं हुआ"); this.save(j, String(ph).replace(/\D/g, "").slice(-10)); return this.u
+  },
+  signIn(ph, pin) { return this.call("signInWithPassword", ph, pin) }, signUp(ph, pin) { return this.call("signUp", ph, pin) },
+  async tok() {
+    if (!this.u) return ""; if (now() < this.u.exp - 60000) return this.u.idt;
+    const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(this.u.rt) });
+    if (!r.ok) { if (r.status === 400) this.out(); return "" } this.save(await r.json()); return this.u.idt
+  },
+  out() { this.u = null; try { localStorage.removeItem("mr_auth") } catch (e) { } }
+};
+async function fs(method, path, body) {
+  const t = await AUTH.tok(), r = await fetch(FSB + path, { method, headers: Object.assign({ "Content-Type": "application/json" }, t ? { Authorization: "Bearer " + t } : {}), body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 404) return null; const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(((j[0] || j).error || {}).message || "HTTP " + r.status); e.code = r.status; throw e } return j
+}
+const fsGet = async (col, id) => { const d = await fs("GET", `/${col}/${id}`); return d ? docOf(d) : null };
+const fsSet = (col, id, o) => fs("PATCH", `/${col}/${id}`, { fields: encF(o) });
+const fsQuery = async q => ((await fs("POST", ":runQuery", { structuredQuery: q })) || []).filter(x => x.document).map(x => docOf(x.document));
+
+/* DB — दो रूप, एक ही चेहरा: all() · on(f) · start({staff|ids}) · add(o) · upd(id, patch, by) */
+const newId = () => "o" + now().toString(36) + Math.random().toString(36).slice(2, 8);
+const DB = FS_ON ? (() => {
+  let cache = [], subs = [], opt = null, timer = null, busy = false;
+  const fire = () => subs.forEach(f => { try { f(cache) } catch (e) { console.error(e) } });
+  const poll = async () => {
+    if (!opt || busy) return; busy = true;
+    try {
+      if (opt.staff) cache = await fsQuery({ from: [{ collectionId: "orders" }], where: { fieldFilter: { field: { fieldPath: "ts" }, op: "GREATER_THAN_OR_EQUAL", value: { integerValue: String(today0()) } } }, orderBy: [{ field: { fieldPath: "ts" } }], limit: 600 });
+      else { const ids = opt.ids().slice(-12), got = await Promise.all(ids.map(id => fsGet("orders", id).catch(() => cache.find(o => o.id === id) || null))); cache = got.filter(Boolean) }
+      DB.err = ""; fire()
+    } catch (e) { DB.err = e.message; fire() } busy = false
+  };
+  return {
+    mode: "fs", err: "", all: () => cache, on(f) { subs.push(f); f(cache) }, poll,
+    start(o) { opt = o; clearInterval(timer); poll(); timer = setInterval(() => { if (!document.hidden) poll() }, o.staff ? 5000 : 7000); document.addEventListener("visibilitychange", () => { if (!document.hidden) poll() }) },
+    async add(o) { o.ts = now(); o.status = o.status || "new"; o.log = [{ s: o.status, ts: o.ts, by: o.by || "" }]; const id = newId(), d = Object.assign({}, o); await fs("POST", `/orders?documentId=${id}`, { fields: encF(d) }); o.id = id; cache = cache.concat([o]); fire(); return o },
+    async upd(id, p, by) { const o = cache.find(x => x.id === id); if (!o) return null; const old = Object.assign({}, o); Object.assign(o, p); if (p.status) o.log = (o.log || []).concat([{ s: p.status, ts: now(), by: by || "" }]); fire();
+      const f = Object.assign({}, p, p.status ? { log: o.log } : {}); try { await fs("PATCH", `/orders/${id}?` + Object.keys(f).map(k => "updateMask.fieldPaths=" + k).join("&"), { fields: encF(f) }) } catch (e) { Object.assign(o, old); fire(); throw e } return o }
+  };
+})() : (() => {
   const K = "mr_orders"; let subs = [];
   const ch = ("BroadcastChannel" in window) ? new BroadcastChannel("mr") : null;
   const all = () => LS.get(K, []);
@@ -29,13 +84,19 @@ const DB = (() => {
   if (ch) ch.onmessage = fire;
   addEventListener("storage", e => { if (e.key === K) fire() });
   return {
-    mode: "local", all, on(f) { subs.push(f); f(all()) },
-    add(o) { const a = all(); o.id = "o" + now().toString(36) + Math.random().toString(36).slice(2, 6); o.ts = now(); o.status = "new"; o.log = [{ s: "new", ts: o.ts, by: o.by || "" }]; a.push(o); save(a); return o },
-    upd(id, p, by) { const a = all(), o = a.find(x => x.id === id); if (!o) return null; Object.assign(o, p); if (p.status) (o.log = o.log || []).push({ s: p.status, ts: now(), by: by || "" }); save(a); return o }
+    mode: "local", err: "", all, on(f) { subs.push(f); f(all()) }, start() { }, poll() { },
+    async add(o) { const a = all(); o.id = newId(); o.ts = now(); o.status = o.status || "new"; o.log = [{ s: o.status, ts: o.ts, by: o.by || "" }]; a.push(o); save(a); return o },
+    async upd(id, p, by) { const a = all(), o = a.find(x => x.id === id); if (!o) return null; Object.assign(o, p); if (p.status) (o.log = o.log || []).push({ s: p.status, ts: now(), by: by || "" }); save(a); return o }
   };
 })();
+/* APK के भीतर? (Capacitor) — असली अलार्म/लोकेशन की सेवा */
+const NAT = () => { try { return window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() ? Capacitor.Plugins.BtPrinter : null } catch (e) { return null } };
 
 const MENU = { shop: {}, cats: [], items: [], byId: {}, async load() { const j = await (await fetch(ROOT + "menu.json", { cache: "no-cache" })).json(); this.shop = j.shop || {}; this.cats = j.cats || []; this.items = (j.items || []).filter(i => !i.off); this.items.forEach(i => this.byId[i.id] = i); return this } };
+const hmin = t => { const [h, m] = String(t).split(":").map(Number); return h * 60 + (m || 0) };
+/* रसोई अभी खुली? → {open, next:"6:30 PM"} (menu.json shop.hours) */
+function shopOpen() { const H = (MENU.shop.hours || []), d = new Date(), n = d.getHours() * 60 + d.getMinutes(), f = t => { const m = hmin(t); return ((m / 60 | 0) % 12 || 12) + ":" + String(m % 60).padStart(2, "0") + (m < 720 ? " AM" : " PM") };
+  if (CFG.alwaysOpen || !H.length || H.some(h => n >= hmin(h[0]) && n <= hmin(h[1]))) return { open: true }; const nx = H.find(h => hmin(h[0]) > n) || H[0]; return { open: false, next: f(nx[0]) } }
 const title = s => String(s || "").toLowerCase().replace(/(^|[\s(/-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
 const vmark = v => `<i class="vm ${v ? "v" : "nv"}"></i>`;
 

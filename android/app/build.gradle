@@ -4,7 +4,7 @@ android {
     namespace = "in.marwar.rasoi"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "in.marwar.rasoi"
+        applicationId "in.marwar.rasoi" // Marwar Rasoi — मैनेजर/वेटर/मालिक ऐप
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // GitHub पर हर बिल्ड का नंबर अपने-आप बढ़ता है (नई APK पुरानी के ऊपर इंस्टॉल हो, डेटा बचा रहे)

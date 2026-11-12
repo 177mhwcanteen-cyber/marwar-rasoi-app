@@ -47,7 +47,7 @@ async def main():
         await st.screenshot(path=SH + "/rasoi-tables.png")
         await st.click('[data-t="take"]'); await st.wait_for_selector(".mc"); await st.screenshot(path=SH + "/rasoi-take.png")
         # मालिक: 3 मिनट पुराना नया ऑर्डर ही बजे
-        await st.evaluate("""()=>{ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);const o=DB.add({kind:'order',type:'delivery',items:[{id:'x',n:'Dal Fry',q:1,s:150,veg:true}],total:150,by:'customer',name:'Test',addr:'Q 12'});}""")
+        await st.evaluate("""()=>{ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);DB.add({kind:'order',type:'delivery',items:[{id:'x',n:'Dal Fry',q:1,s:150,veg:true}],total:150,by:'customer',name:'Test',addr:'Q 12'});}""")
         await st.click('[data-t="orders"]'); await st.wait_for_timeout(200); ok(await st.evaluate("BELL.on") is False, "मालिक: ताज़ा ऑर्डर पर घंटी नहीं")
         await st.evaluate("""()=>{const a=DB.all();a[a.length-1].ts=Date.now()-200000;LS.set('mr_orders',a);ALL=a;draw()}"""); await st.wait_for_timeout(200)
         ok(await st.evaluate("BELL.on") is True and await st.locator(".oc.late .esc").count() == 1, "मालिक: 3 मिनट बाद घंटी + लाल कार्ड")

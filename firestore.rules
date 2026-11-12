@@ -1,0 +1,38 @@
+// मारवाड़ रसोई — Firestore के नियम (विक्रम जी Firebase कंसोल → Firestore → Rules में पूरा चिपकाएँ)
+// मालिक = नीचे लिखा नंबर (लॉगिन: मोबाइल + पिन → <नंबर>@marwar-rasoi.app)। मालिक सबसे पहले अपना खाता बनाएँ।
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function owner() { return request.auth != null && request.auth.token.email in ['9509553600@marwar-rasoi.app']; }
+    function role() { return get(/databases/$(db)/documents/staff/$(request.auth.uid)).data.role; }
+    function staff() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager', 'waiter'])); }
+    function d() { return request.resource.data; }
+
+    // ऑर्डर और टेबल की पुकार। ग्राहक: सिर्फ़ नया बना सके और अपना (id जानकर) पढ़ सके — सूची नहीं, बदलाव नहीं।
+    match /orders/{id} {
+      allow get: if true;
+      allow list, update: if staff();
+      allow create: if staff() || (
+        d().status == 'new' && d().by == 'customer' && d().kind in ['order', 'call'] && d().type in ['table', 'parcel', 'delivery']
+        && d().keys().hasOnly(['kind', 'call', 'type', 'table', 'items', 'total', 'note', 'by', 'name', 'phone', 'addr', 'ts', 'status', 'log'])
+        && d().ts is int && d().ts > request.time.toMillis() - 300000 && d().ts < request.time.toMillis() + 300000
+        && (!('items' in d()) || (d().items is list && d().items.size() <= 40))
+        && (!('note' in d()) || d().note.size() <= 200) && (!('addr' in d()) || d().addr.size() <= 100) && (!('name' in d()) || d().name.size() <= 60)
+        && (!('table' in d()) || (d().table is int && d().table >= 0 && d().table <= 40))
+      );
+      allow delete: if false; // पुराना डेटा कभी न मिटे
+    }
+    // टीम: हर कोई अपना खाता "pending" बना सके; मैनेजर/वेटर सिर्फ़ मालिक बनाए।
+    match /staff/{uid} {
+      allow get: if request.auth != null && (request.auth.uid == uid || owner());
+      allow list: if owner();
+      allow create: if request.auth != null && request.auth.uid == uid && (owner() || d().role == 'pending');
+      allow update: if owner();
+      allow delete: if false;
+    }
+    // लोकेशन (APK की TrackService): अपना ही लिखे, टीम पढ़े
+    match /live/{uid} { allow read: if staff(); allow write: if request.auth != null && request.auth.uid == uid && staff(); }
+    // लोकेशन के बिंदु (रास्ता): टीम लिखे, मालिक पढ़े
+    match /trk/{id} { allow create, update: if staff(); allow read: if owner(); }
+  }
+}
