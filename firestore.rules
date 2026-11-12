@@ -7,6 +7,7 @@ service cloud.firestore {
     function role() { return get(/databases/$(db)/documents/staff/$(request.auth.uid)).data.role; }
     function staff() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager', 'waiter'])); }
     function d() { return request.resource.data; }
+    function istMin() { return math.floor(((request.time.toMillis() + 19800000) % 86400000) / 60000); }
 
     // ऑर्डर और टेबल की पुकार। ग्राहक: सिर्फ़ नया बना सके और अपना (id जानकर) पढ़ सके — सूची नहीं, बदलाव नहीं।
     match /orders/{id} {
@@ -15,6 +16,7 @@ service cloud.firestore {
       allow create: if staff() || (
         d().status == 'new' && d().by == 'customer' && d().kind in ['order', 'call'] && d().type in ['table', 'parcel', 'delivery']
         && d().keys().hasOnly(['kind', 'call', 'type', 'table', 'items', 'total', 'note', 'by', 'name', 'phone', 'addr', 'ts', 'status', 'log'])
+        && istMin() >= 480 && istMin() < 1350 // ग्राहक का ऑर्डर सिर्फ़ सुबह 8:00 से रात 10:30 (भारत का समय)
         && d().ts is int && d().ts > request.time.toMillis() - 300000 && d().ts < request.time.toMillis() + 300000
         && (!('items' in d()) || (d().items is list && d().items.size() <= 40))
         && (!('note' in d()) || d().note.size() <= 200) && (!('addr' in d()) || d().addr.size() <= 100) && (!('name' in d()) || d().name.size() <= 60)

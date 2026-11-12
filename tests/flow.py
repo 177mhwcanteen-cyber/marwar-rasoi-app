@@ -13,11 +13,22 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(); cx = await b.new_context(viewport={"width": 390, "height": 780}, device_scale_factor=2)
         errs = []
+        async def cfg(route):
+            r = await route.fetch(); t = (await r.text()).replace('org: "rasoi",', 'org: "rasoi", testClock: "20:00",'); ok("testClock" in t, "config"); await route.fulfill(response=r, body=t)
+        await cx.route("**/config.js*", cfg)
         st = await cx.new_page(); st.on("pageerror", lambda e: errs.append("staff: " + str(e)))
         await st.goto(B); await st.wait_for_selector("#lgo"); ok(await st.input_value("#ln") == "स्वरूप सा", "मैनेजर का नाम पहले से"); await st.click("#lgo")
         await st.wait_for_selector(".empty"); ok(await st.locator("#demo").is_visible(), "डेमो पट्टी")
         cu = await cx.new_page(); cu.on("pageerror", lambda e: errs.append("table: " + str(e)))
         await cu.goto(B + "t/?t=5"); await cu.wait_for_selector(".mc"); ok(await cu.inner_text("#tno") == "Table 5", "टेबल नंबर")
+        ok("Kitchen is open" in await cu.inner_text("#hero"), "8 बजे: रसोई चालू")
+        R = await cu.evaluate("['07:59','08:00','10:00','12:00','15:00','17:30','19:15','21:00','22:29','22:30','02:00'].map(t=>{const s=orderState(t);return t+' '+s.ok+' '+s.tone+' '+s.en})")
+        exp = {"07:59": "false closed", "08:00": "true first", "10:00": "true first", "12:00": "true open", "15:00": "true first", "17:30": "true first", "19:15": "true open", "21:00": "true hurry", "22:29": "true hurry", "22:30": "false closed", "02:00": "false closed"}
+        for r in R: ok(r[6:].startswith(exp[r[:5]]), "समय " + r)
+        ok(any("17:30" in r and "starts at 7:15 PM" in r and "packed first" in r for r in R) and any("10:00" in r and "11:30 AM" in r for r in R) and any("21:00" in r and "order quickly" in r for r in R), "संदेश")
+        await cu.evaluate("CFG.testClock='23:10';calls()"); ok("closed for the night" in await cu.inner_text("#hero"), "रात: बंद का संदेश")
+        await cu.click('.mc[data-id="rs-dal-fry"] .ad'); await cu.click("#bar"); await cu.wait_for_timeout(200); ok(await cu.locator("#send").count() == 0, "रात में ऑर्डर नहीं जाता")
+        await cu.click('.mc[data-id="rs-dal-fry"] [data-d="-1"]'); await cu.evaluate("CFG.testClock='20:00';calls()")
         ok(await cu.locator(".mc").count() == 60, "60 डिश: %d" % await cu.locator(".mc").count())
         ok(await cu.locator(".mc .ph[style*=menu]").count() >= 58, "फोटो")
         await cu.click('.mc[data-id="rs-dal-tadka"] .ad'); await cu.click('.mc[data-id="rs-dal-tadka"] [data-d="1"]'); await cu.click('.mc[data-id="rs-butter-naan"] .ad')

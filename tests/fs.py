@@ -52,7 +52,7 @@ async def fake(route):
     await J({}, 400)
 async def cfg(route):
     r = await route.fetch(); t = await r.text()
-    t = t.replace('firebase: { apiKey: ""', 'alwaysOpen: true, firebase: { apiKey: "k"').replace('projectId: ""', 'projectId: "demo-rasoi"'); ok('"demo-rasoi"' in t, "config बदली नहीं")
+    t = t.replace('firebase: { apiKey: ""', 'testClock: "17:30", firebase: { apiKey: "k"').replace('projectId: ""', 'projectId: "demo-rasoi"'); ok('"demo-rasoi"' in t, "config बदली नहीं")
     await route.fulfill(response=r, body=t)
 async def main():
     async with async_playwright() as p:
@@ -70,7 +70,7 @@ async def main():
         await ow.click('[data-t="more"]'); await ow.click('[data-a="team"]'); await ow.wait_for_selector('[data-u="u2"][data-r="manager"]'); await ow.click('[data-u="u2"][data-r="manager"]'); await ow.wait_for_timeout(300)
         ok(sv(DOCS["staff/u2"], "role") == "manager", "मालिक ने मैनेजर बनाया"); await ow.click("#sheet .scrim")
         await mg.click("text=फिर देखें"); await mg.wait_for_selector("#tabs button.on"); ok("स्वरूप सा" in await mg.inner_text("#me"), "मैनेजर अंदर")
-        cu = await page("customer"); await cu.goto(B + "t/"); await cu.wait_for_selector(".mc"); ok("Home order" in await cu.inner_text("#tno") and "Free home delivery" in await cu.inner_text("#hero"), "घर का ऑर्डर-पेज")
+        cu = await page("customer"); await cu.goto(B + "t/"); await cu.wait_for_selector(".mc"); ok("Home order" in await cu.inner_text("#tno") and "Free home delivery" in await cu.inner_text("#hero") and "Kitchen starts at 7:15 PM" in await cu.inner_text("#hero"), "घर का ऑर्डर-पेज")
         await cu.click('.mc[data-id="rs-paneer-butter-masala"] .ad'); await cu.click("#bar"); await cu.click("#send"); await cu.wait_for_timeout(200); ok(await cu.locator("#send").is_visible(), "नाम के बिना नहीं जाता")
         await cu.fill("#hn", "Capt Sharma"); await cu.fill("#hp", "9876543210"); await cu.fill("#ha", "Q 12/B, 74 Armd"); await cu.click("#send"); await cu.wait_for_selector(".trk")
         o = [f for k, f in DOCS.items() if k.startswith("orders/")]; ok(len(o) == 1 and sv(o[0], "type") == "delivery" and sv(o[0], "phone") == "9876543210", "ऑर्डर Firestore में")

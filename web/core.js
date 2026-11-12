@@ -94,9 +94,18 @@ const NAT = () => { try { return window.Capacitor && Capacitor.isNativePlatform 
 
 const MENU = { shop: {}, cats: [], items: [], byId: {}, async load() { const j = await (await fetch(ROOT + "menu.json", { cache: "no-cache" })).json(); this.shop = j.shop || {}; this.cats = j.cats || []; this.items = (j.items || []).filter(i => !i.off); this.items.forEach(i => this.byId[i.id] = i); return this } };
 const hmin = t => { const [h, m] = String(t).split(":").map(Number); return h * 60 + (m || 0) };
-/* रसोई अभी खुली? → {open, next:"6:30 PM"} (menu.json shop.hours) */
-function shopOpen() { const H = (MENU.shop.hours || []), d = new Date(), n = d.getHours() * 60 + d.getMinutes(), f = t => { const m = hmin(t); return ((m / 60 | 0) % 12 || 12) + ":" + String(m % 60).padStart(2, "0") + (m < 720 ? " AM" : " PM") };
-  if (CFG.alwaysOpen || !H.length || H.some(h => n >= hmin(h[0]) && n <= hmin(h[1]))) return { open: true }; const nx = H.find(h => hmin(h[0]) > n) || H[0]; return { open: false, next: f(nx[0]) } }
+const h12 = t => { const m = hmin(t); return ((m / 60 | 0) % 12 || 12) + ":" + String(m % 60).padStart(2, "0") + (m < 720 ? " AM" : " PM") };
+/* ⏰ ग्राहक अभी ऑर्डर कर सकता है? → {ok, tone: closed|hurry|first|open, en, hi}  (config: orderFrom/orderTo/hurryFrom/lunch/dinner/eveFrom)
+   रात 10:30–सुबह 8:00: बंद। 9 बजे के बाद: जल्दी करें। रसोई चालू न हो (सुबह / दोपहर बाद / शाम 5 के बाद): "रसोई __ पर शुरू — सबसे पहले आपका ऑर्डर"। */
+function orderState(at) {
+  const d = new Date(), n = at != null ? hmin(at) : CFG.testClock ? hmin(CFG.testClock) : d.getHours() * 60 + d.getMinutes();
+  const F = hmin(CFG.orderFrom || "08:00"), T = hmin(CFG.orderTo || "22:30"), L = (CFG.lunch || ["11:30", "14:30"]), D = (CFG.dinner || ["19:15", "22:30"]);
+  if (n < F || n >= T) return { ok: false, tone: "closed", en: `Restaurant is closed for the night — ordering opens at ${h12(CFG.orderFrom || "08:00")}. You can still see the menu.`, hi: `रात ${h12(CFG.orderTo || "22:30")} के बाद ऑर्डर बंद — सुबह ${h12(CFG.orderFrom || "08:00")} से फिर चालू` };
+  if (n >= hmin(CFG.hurryFrom || "21:00")) return { ok: true, tone: "hurry", en: `We close at ${h12(CFG.orderTo || "22:30")} — please order quickly so we can prepare it in time!`, hi: "रेस्टोरेंट बंद होने वाला है — जल्दी ऑर्डर करें ताकि आपका ऑर्डर बन सके" };
+  if (n < hmin(L[0])) return { ok: true, tone: "first", en: `Kitchen starts at ${h12(L[0])} — order now and yours will be prepared first!`, hi: `रसोई ${h12(L[0])} पर शुरू होगी — सबसे पहले आपका ऑर्डर बनेगा` };
+  if (n > hmin(L[1]) && n < hmin(D[0])) return { ok: true, tone: "first", en: `Kitchen starts at ${h12(D[0])} — order now and yours will be packed first!`, hi: `रसोई ${h12(D[0])} पर शुरू होगी — सबसे पहले आपका ऑर्डर पैक होगा` };
+  return { ok: true, tone: "open", en: "Kitchen is open — hot food, freshly made for you", hi: "रसोई चालू है" };
+}
 const title = s => String(s || "").toLowerCase().replace(/(^|[\s(/-])([a-z])/g, (m, a, b) => a + b.toUpperCase());
 const vmark = v => `<i class="vm ${v ? "v" : "nv"}"></i>`;
 

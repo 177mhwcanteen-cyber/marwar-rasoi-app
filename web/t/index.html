@@ -1,7 +1,8 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Marwar Rasoi — Order online</title><meta name="theme-color" content="#7a1c1c"><link rel="icon" href="../icon.png"><link rel="stylesheet" href="../app.css">
 <style>body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}.bar{bottom:calc(10px + env(safe-area-inset-bottom))}
-.hero{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:8px 0 2px;display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px}.hero b{color:var(--m)}.hero.cl{background:#fee2e2;border-color:#fca5a5}</style></head><body>
+.hero{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:8px 0 2px;display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px}.hero b{color:var(--m)}.hero small{display:block;font-weight:600;color:var(--mut);font-size:12px}.hero .fd{color:var(--ok);font-weight:800}
+.hero.closed{background:#eef2ff;border-color:#c7d2fe}.hero.hurry{background:#fff1e6;border-color:#fdba74}.hero.first{background:#fffbe6;border-color:var(--g)}.hero.open{background:#ecfdf3;border-color:#86efac}</style></head><body>
 <div class="top"><div><h1>MARWAR RASOI</h1><small id="sub">Amenity Centre, Jalipa</small></div><span class="me" id="tno"></span></div>
 <div class="demo" id="demo" hidden>Demo mode — orders stay on this phone until the restaurant goes live</div>
 <div class="pg"><div class="calls" id="calls"></div><div id="hero"></div><div id="trk"></div><div class="h">🍽️ Menu <small>मेन्यू — tap ADD</small></div><div id="menu"></div></div>
@@ -16,7 +17,9 @@ const mine = () => { const ids = myIds(); return ALL.filter(o => ids.includes(o.
 const remember = o => { const a = LS.get(MINE, []); a.push({ id: o.id, ts: o.ts }); LS.set(MINE, a.slice(-30)); ALL = DB.all(); DB.poll(); calls(); track() };
 $("#tno").textContent = T ? "Table " + T : "🛵 Home order";
 function calls() {
-  if (!T) { $("#calls").hidden = true; const s = shopOpen(); $("#hero").innerHTML = s.open ? `<div class="hero">🛵 <span><b>Free home delivery</b> · No minimum order · Cash / UPI on delivery</span></div>` : `<div class="hero cl">🕐 <span>Kitchen is closed right now — <b>opens ${s.next}</b>. You can still see the menu.</span></div>`; return }
+  const st = orderState(), ic = { closed: "🌙", hurry: "⏳", first: "🥇", open: "🔥" }[st.tone];
+  $("#hero").innerHTML = `<div class="hero ${st.tone}">${ic} <span><b>${st.en}</b><small>${st.hi}</small>${!T && st.ok ? `<small class="fd">🛵 Free home delivery · No minimum order · Cash / UPI</small>` : ""}</span></div>`;
+  if (!T) { $("#calls").hidden = true; return }
   const open = mine().filter(o => o.kind === "call" && o.status === "new");
   $("#calls").innerHTML = Object.keys(CALLS).map(k => { const s = open.find(o => o.call === k); return `<button data-call="${k}" class="${s ? "sent" : ""}"><span>${CALLS[k].ic}</span>${s ? "Coming…" : CALLS[k].en}</button>` }).join("");
 }
@@ -34,7 +37,7 @@ $("#calls").onclick = e => {
   DB.add({ kind: "call", call: k, type: "table", table: T, by: "customer" }).then(o => { remember(o); toast(CALLS[k].ic + " " + CALLS[k].en + " — coming to Table " + T) }).catch(() => toast("Could not send — check internet"));
 };
 $("#bar").onclick = () => {
-  const L = cartLines(cart), so = shopOpen(); if (!T && !so.open) return toast("Kitchen opens at " + so.next);
+  const L = cartLines(cart), so = orderState(); if (!so.ok) return toast("Ordering opens at " + h12(CFG.orderFrom || "08:00"));
   const b = sheet(`<h3>${T ? "Table " + T : "Home order"} — confirm</h3><div class="kot">${L.map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(l.n)}<span>${rs(l.q * l.s)}</span></div>`).join("")}</div>
   ${T ? "" : `<div class="seg" id="ht"><button data-h="delivery" class="${HOME.type === "delivery" ? "on" : ""}">🛵 Home delivery</button><button data-h="parcel" class="${HOME.type === "parcel" ? "on" : ""}">🥡 I will pick up</button></div>
   <input class="in" id="hn" maxlength="40" placeholder="Your name" value="${E(HOME.name)}"><input class="in" id="hp" inputmode="numeric" maxlength="10" placeholder="Mobile number (10 digits)" value="${E(HOME.phone)}"><input class="in" id="ha" maxlength="80" placeholder="Quarter No. / Unit / Area" value="${E(HOME.addr)}">`}
@@ -50,5 +53,5 @@ $("#bar").onclick = () => {
   };
 };
 let M; { const tp = $(".top"), th = () => document.documentElement.style.setProperty("--th", tp.offsetHeight + "px"); th(); addEventListener("resize", th) }
-MENU.load().then(() => { $("#demo").hidden = DB.mode !== "local"; M = menuUI($("#menu"), cart, bar, { en: 1 }); DB.on(a => { ALL = a; calls(); track() }); DB.start({ ids: myIds }); setInterval(() => { track(); if (!T) calls() }, 30000) });
+MENU.load().then(() => { $("#demo").hidden = DB.mode !== "local"; M = menuUI($("#menu"), cart, bar, { en: 1 }); DB.on(a => { ALL = a; calls(); track() }); DB.start({ ids: myIds }); setInterval(() => { track(); calls() }, 30000) });
 </script></body></html>
