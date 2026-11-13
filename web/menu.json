@@ -634,7 +634,7 @@
    "c": "biryani",
    "veg": false,
    "em": "🍛",
-   "p": "menu/rs-chicken-dum-biryani.jpg"
+   "p": "menu/rs-chicken-dum-biryani.jpg?v=1113"
   },
   {
    "id": "rs-fish-curry",
@@ -645,7 +645,7 @@
    "c": "fish",
    "veg": false,
    "em": "🐟",
-   "p": "menu/rs-fish-curry.jpg"
+   "p": "menu/rs-fish-curry.jpg?v=1113"
   },
   {
    "id": "rs-fish-masala",
@@ -655,7 +655,7 @@
    "c": "fish",
    "veg": false,
    "em": "🐟",
-   "p": "menu/rs-fish-masala.jpg"
+   "p": "menu/rs-fish-masala.jpg?v=1113"
   },
   {
    "id": "rs-green-salad",
@@ -665,7 +665,7 @@
    "c": "extra",
    "veg": true,
    "em": "🥗",
-   "p": "menu/rs-green-salad.jpg"
+   "p": "menu/rs-green-salad.jpg?v=1113"
   },
   {
    "id": "rs-dahi",
@@ -676,10 +676,11 @@
    "c": "extra",
    "veg": true,
    "em": "🥣",
-   "p": "menu/rs-dahi.jpg"
+   "p": "menu/rs-dahi.jpg?v=1113"
   },
   {
    "id": "rs-water-bottle",
+   "p": "menu/rs-water-bottle.jpg?v=1113",
    "n": "WATER BOTTLE",
    "s": 20,
    "u": "pc",
