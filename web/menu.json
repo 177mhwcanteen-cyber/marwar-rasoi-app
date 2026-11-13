@@ -444,7 +444,7 @@
    "c": "nonveg",
    "veg": false,
    "em": "🍗",
-   "p": "menu/rs-tandoori-chicken-plate.jpg"
+   "p": "menu/rs-tandoori-chicken-plate.jpg?v=1113"
   },
   {
    "id": "rs-tandoori-chicken-half",
@@ -455,7 +455,7 @@
    "c": "nonveg",
    "veg": false,
    "em": "🍗",
-   "p": "menu/rs-tandoori-chicken-half.jpg"
+   "p": "menu/rs-tandoori-chicken-half.jpg?v=1113"
   },
   {
    "id": "rs-tandoori-chicken-full",
@@ -466,7 +466,7 @@
    "c": "nonveg",
    "veg": false,
    "em": "🍗",
-   "p": "menu/rs-tandoori-chicken-full.jpg"
+   "p": "menu/rs-tandoori-chicken-full.jpg?v=1113"
   },
   {
    "id": "rs-chicken-tikka",
@@ -476,7 +476,7 @@
    "c": "nonveg",
    "veg": false,
    "em": "🍢",
-   "p": "menu/rs-chicken-tikka.jpg"
+   "p": "menu/rs-chicken-tikka.jpg?v=1113"
   },
   {
    "id": "rs-chicken-hariyali-tikka",
@@ -486,7 +486,7 @@
    "c": "nonveg",
    "veg": false,
    "em": "🍢",
-   "p": "menu/rs-chicken-hariyali-tikka.jpg"
+   "p": "menu/rs-chicken-hariyali-tikka.jpg?v=1113"
   },
   {
    "id": "rs-plain-tandoori-roti",
@@ -497,7 +497,7 @@
    "c": "bread",
    "veg": true,
    "em": "🫓",
-   "p": "menu/rs-plain-tandoori-roti.jpg"
+   "p": "menu/rs-plain-tandoori-roti.jpg?v=1113"
   },
   {
    "id": "rs-butter-tandoori-roti",
