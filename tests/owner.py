@@ -46,8 +46,26 @@ async def main():
         await s.click('[data-a="map"]'); await s.wait_for_selector(".pin"); ok(await s.locator(".pin").count() == 2 and await s.locator(".pin.off").count() == 1, "दो साथी, एक बंद")
         t = await s.inner_text("#ml"); ok("स्वरूप सा" in t and "चालू" in t and "2 घंटे पहले" in t and "3 जगह दर्ज" in t, "सूची (ख़राब GPS वाला बिंदु छूटा): " + t[:200])
         await s.click('[data-mu="u2"]'); await s.wait_for_timeout(300); ok(await s.locator("#mp path.leaflet-interactive").count() == 1 and await s.locator(".pin.sel").count() == 1, "आज का रास्ता"); await s.screenshot(path=SH + "/rasoi-map.png"); await s.click("#sheet .sx")
+        # 👥 ग्राहक: CSV चढ़ाना, हिस्से, खोज, WhatsApp, टिप्पणी
+        import datetime; D = lambda n: (datetime.date.today() - datetime.timedelta(days=n)).isoformat()
+        H = "Sr,Mobile (Username),Customer Name,Name Pakka?,Delivery Address,Total Orders,Total Spend Rs,Avg Bill Rs,First Order,Last Order,Days Since Last,Customer Type,Fav Dish 1,Fav Dish 2,Fav Dish 3,Fav Dish 4,Fav Dish 5,All Dishes (qty),Veg / Non-Veg,Usual Order Time,Order Type,Payment Habit,Udhaari Pending Rs,Cancelled Bills,Other Names on Bills,Note,WhatsApp Link,Ready Message"
+        CSV = "\ufeff" + H + "\n" + "\n".join([
+            f'1,9000000001,Test Vip,Haan (UPI naam),"60, MH",28,11581,414,{D(90)},{D(3)},3,VIP,Kadai Chicken,Kadai Paneer,,,,"Kadai Chicken x11, Roti x20",Dono,Dinner (7-8 baje),Delivery,bharatpe,0,0,A | B,,x,y',
+            f'2,9000000002,Test Gone,Haan (UPI naam),74,6,3000,500,{D(120)},{D(45)},45,Regular,Fish Curry,,,,,Fish Curry x6,Non-Veg,Dinner (8-9 baje),Delivery,bharatpe,0,1,,,x,y',
+            f'3,9000000003,,Nahi - naam poochna hai,MH,2,400,200,{D(20)},{D(10)},10,Kabhi,Dal Tadka,,,,,Dal Tadka x2,Veg,Lunch,Pickup,pending,400,0,MH,,x,y',
+            f'4,9000000001,Dup,Haan,60,1,1,1,{D(1)},{D(1)},1,Naya,X,,,,,X x1,Veg,Lunch,Pickup,cash,0,0,,,x,y'])
+        await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);draw()"); await s.click('[data-a="cust"]'); await s.wait_for_selector("#cf", state="attached")
+        await s.set_input_files("#cf", {"name": "bad.csv", "mimeType": "text/csv", "buffer": b"a,b\n1,2\n"}); await s.wait_for_timeout(300); ok("ग्राहक-फ़ाइल नहीं" in await s.inner_text("#cerr"), "ग़लत फ़ाइल रुकी")
+        await s.set_input_files("#cf", {"name": "c.csv", "mimeType": "text/csv", "buffer": CSV.encode()}); await s.wait_for_selector("[data-co]"); t = await s.inner_text("#cl")
+        ok("3\nग्राहक" in t and "₹14981" in t and "₹400" in t and "Test Gone" in t and await s.locator("[data-co]").count() == 1, "चढ़ी (दोहरा नंबर छूटा), 'वापस बुलाएँ' में सिर्फ़ पुराना: " + t[:260])
+        await s.click('[data-co="9000000002"]'); h = await s.get_attribute('[data-cw="9000000002"]', "href"); ok("wa.me/919000000002" in h and "Bahut%20din" in h and "Fish%20Curry" in h and "order%2F%3Fs%3Drasoi" in h, "वापस बुलाने का संदेश: " + h[:120])
+        await s.fill("#cn", "74 के मेस वाले"); await s.click('[data-cs="9000000002"]'); await s.wait_for_timeout(300)
+        await s.click('[data-cf="ud"]'); t = await s.inner_text("#cl"); ok("ग्राहक 0003" in t and "उधारी ₹400" in t and await s.locator("[data-co]").count() == 1, "उधारी वाले: " + t[:200])
+        await s.fill("#cq", "kadai"); await s.wait_for_timeout(600); t = await s.inner_text("#cl"); ok("Test Vip" in t and await s.locator("[data-co]").count() == 1, "डिश से खोज")
+        await s.fill("#cq", ""); await s.wait_for_timeout(600); await s.click('[data-cf="win"]'); ok("74 के मेस वाले" in await s.inner_text("#cl"), "टिप्पणी बनी रही"); await s.screenshot(path=SH + "/rasoi-cust.png"); await s.click("#sheet .sx")
+        await s.evaluate("DB.add({kind:'order',type:'delivery',items:[{id:'x',n:'Dal',q:1,s:100,veg:1}],total:100,by:'customer',name:'T',phone:'9000000001',status:'new',log:[]})"); await s.click('[data-t="orders"]'); await s.wait_for_selector(".ctag"); ok("28 ऑर्डर" in await s.inner_text(".ctag"), "ऑर्डर कार्ड पर ग्राहक की पहचान"); await s.click('[data-t="more"]')
         # मैनेजर को नक्शा/कोड नहीं
-        await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); ok(await s.locator('[data-a="map"]').count() == 0 and await s.locator('[data-a="code"]').count() == 0 and await s.locator('[data-a="udhar"]').count() == 1, "मैनेजर: नक्शा/कोड नहीं, उधारी है")
+        await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); ok(await s.locator('[data-a="map"]').count() == 0 and await s.locator('[data-a="code"]').count() == 0 and await s.locator('[data-a="udhar"]').count() == 1 and await s.locator('[data-a="cust"]').count() == 0, "मैनेजर: नक्शा/कोड/ग्राहक नहीं, उधारी है")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: मालिक के औज़ार पास")
 asyncio.run(main())

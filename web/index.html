@@ -5,7 +5,7 @@
 <div class="pg" id="pg"></div>
 <button class="bar" id="bar" hidden></button>
 <div class="tabs" id="tabs"><button data-t="orders"><span>🔔</span>ऑर्डर<b id="nb" hidden></b></button><button data-t="tables"><span>🍽️</span>टेबल</button><button data-t="take"><span>➕</span>ऑर्डर लें</button><button data-t="store"><span>📦</span>स्टोर</button><button data-t="more"><span>☰</span>और</button></div>
-<script src="config.js"></script><script src="core.js"></script><script src="store.js"></script><script src="owner.js"></script>
+<script src="config.js"></script><script src="core.js"></script><script src="store.js"></script><script src="owner.js"></script><script src="cust.js"></script>
 <script>
 /* मारवाड़ रसोई — मैनेजर / वेटर / मालिक ऐप (चरण 1+2) — नियम: docs/मारवाड़-रसोई-ऐप-प्रॉम्प्ट.txt */
 let ME = LS.get("mr_me", null), TAB = "orders", ALL = [], SIL = {}, TAKE = { type: "table", table: 0, cart: {}, note: "" };
@@ -35,7 +35,7 @@ const card = o => {
     : o.status === "out" ? `<button class="btn" data-a="done" data-id="${o.id}">✔ पूरा + TMBill नं.</button>` : "";
   return `<div class="oc ${late ? "late" : ""}" style="--sc:${s.c}"><div class="r1"><span class="w">${isCall ? (["store", "msg"].includes(o.call) ? CALLS[o.call].ic + " " + CALLS[o.call].hi : CALLS[o.call].ic + " " + where(o).replace("🍽️ ", "") + " — " + CALLS[o.call].hi) : where(o)}</span><span class="pill">${s.hi}</span><span class="t">${hm(o.ts)} · ${mins(o.ts)} मि.</span></div>
   ${late ? `<div class="esc">⏱ ${Math.round(WAIT / 60000)} मिनट से ज़्यादा — मालिक को घंटी</div>` : ""}
-  ${isCall ? (o.note ? `<div class="kot"><div class="nt" style="color:var(--ink)">${E(o.note)}</div></div><div class="who">✍️ ${E(o.by || "")}</div>` : "") : `<div class="who">${o.by === "customer" ? "📱 ग्राहक ने खुद (QR)" : "✍️ " + E(o.by || "")}${o.name ? " · " + E(o.name) : ""}${o.phone ? " · 📞 " + E(o.phone) : ""}${o.addr ? " · 📍 " + E(o.addr) : ""}${o.eta && o.status !== "done" ? " · ⏳ ~" + o.eta + " मि." : ""}${o.tm ? " · 🧾 TMBill " + E(o.tm) : ""}</div>
+  ${isCall ? (o.note ? `<div class="kot"><div class="nt" style="color:var(--ink)">${E(o.note)}</div></div><div class="who">✍️ ${E(o.by || "")}</div>` : "") : `${custTag(o.phone)}<div class="who">${o.by === "customer" ? "📱 ग्राहक ने खुद (QR)" : "✍️ " + E(o.by || "")}${o.name ? " · " + E(o.name) : ""}${o.phone ? " · 📞 " + E(o.phone) : ""}${o.addr ? " · 📍 " + E(o.addr) : ""}${o.eta && o.status !== "done" ? " · ⏳ ~" + o.eta + " मि." : ""}${o.tm ? " · 🧾 TMBill " + E(o.tm) : ""}</div>
   <div class="kot">${(o.items || []).map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(title(l.n))}<span>${rs(l.q * l.s)}</span></div>`).join("")}${o.note ? `<div class="nt">📝 ${E(o.note)}</div>` : ""}</div>`}
   <div class="r3">${isCall ? "<span class='tot'></span>" : `<span class="tot">${rs(o.total)}</span>`}${btn}</div></div>`;
 };
@@ -90,14 +90,14 @@ function vMore() {
   ${ME.role === "owner" ? `<div class="row" style="margin-top:8px">⏱ ${Math.round(WAIT / 60000)} मिनट से देर वाले ऑर्डर (मालिक तक पहुँचे): <b style="margin-left:auto">${esc}</b></div><div class="row">🧾 बिना TMBill नंबर के पूरे ऑर्डर: <b style="margin-left:auto">${T.filter(o => o.status === "done" && !o.tm).length}</b></div>` : ""}
   <div class="h">🏨 होटल का प्रबंध</div><button class="row" data-a="check">✅ चेकलिस्ट — सुबह / रात / हफ़्ते की</button><button class="row" data-a="assets">🪑 प्रॉपर्टी रजिस्टर — कुर्सी, टेबल, बर्तन…</button>
   ${["owner", "manager"].includes(ME.role) ? `<button class="row" data-a="udhar">💰 उधारी — किस पर कितना बाकी, WhatsApp याद</button>` : ""}
-  ${ME.role === "owner" ? `<button class="row" data-a="map">🗺️ टीम कहाँ है — नक्शा और आज का रास्ता</button><button class="row" data-a="msg">📣 मैनेजर को संदेश भेजें (फोन पर अलार्म)</button><button class="row" data-a="code">🤖 Claude का कोड लगाएँ (उधारी / ग्राहक / सूची)</button>` : ""}
+  ${ME.role === "owner" ? `<button class="row" data-a="cust">👥 ग्राहक — VIP, वापस बुलाएँ, उधारी, WhatsApp</button><button class="row" data-a="map">🗺️ टीम कहाँ है — नक्शा और आज का रास्ता</button><button class="row" data-a="msg">📣 मैनेजर को संदेश भेजें (फोन पर अलार्म)</button><button class="row" data-a="code">🤖 Claude का कोड लगाएँ (उधारी / ग्राहक / सूची)</button>` : ""}
   <div class="h">🛠️ औज़ार</div><a class="row" href="qr.html" target="_blank">🖨️ टेबल के QR कार्ड छापें (${CFG.tables})</a><a class="row" href="t/?t=1" target="_blank">📱 ग्राहक का टेबल-पेज देखें (टेबल 1)</a>
   <button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button>${DB.mode === "fs" ? (ME.role === "owner" ? `<button class="row" data-a="team">👥 टीम — मैनेजर/वेटर जोड़ें, मंज़ूरी दें</button>` : "") + `<button class="row" data-a="logout">🚪 ${E(ME.name)} · ${ROLES[ME.role]} — लॉगआउट</button>` : `<button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
 }
 function onAct(e, after) {
   const a = e.target.closest("[data-a]"); if (!a) return false; const id = a.dataset.id, k = a.dataset.a;
   if (k === "sil") { pend().forEach(o => SIL[o.id] = 1); ring() }
-  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true; else if (k === "map") return mapSheet(), true; else if (k === "udhar") return udharSheet(), true; else if (k === "code") return codeSheet(), true;
+  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true; else if (k === "map") return mapSheet(), true; else if (k === "udhar") return udharSheet(), true; else if (k === "code") return codeSheet(), true; else if (k === "cust") return custSheet(), true;
   else if (k === "msg") { const b = sheet(`<h3>📣 मैनेजर को संदेश</h3><textarea class="in" id="mt" rows="3" maxlength="190" placeholder="जैसे: शाम 7 बजे 20 लोगों की पार्टी है, तैयारी रखें"></textarea><button class="btn big" id="ms">भेजें — मैनेजर के फोन पर घंटी बजेगी</button>`); $("#ms", b).onclick = () => { const n = $("#mt", b).value.trim(); if (n.length < 3) return toast("संदेश लिखें"); DB.add({ kind: "call", call: "msg", type: "parcel", table: 0, by: ME.name, note: n }).then(() => { closeSheet(); toast("संदेश गया ✔"); TAB = "orders"; draw() }).catch(() => toast("नहीं गया — नेट देखें")) }; return true } else if (k === "logout") return logout(), true;
   else if (k === "acc") { const b = sheet(`<h3>✅ कितने मिनट में तैयार?</h3><div class="seg">${(CFG.prep || [15, 25, 35]).map(m => `<button data-m="${m}" style="flex:1">${m} मिनट</button>`).join("")}</div>`); b.onclick = x => { const m = x.target.closest("[data-m]"); if (m) { act(id, { status: "acc", eta: +m.dataset.m }); closeSheet(); (after || draw)() } }; return true }
   else if (k === "rej") { const b = sheet(`<h3>❌ मना करने का कारण</h3><div class="seg">${["डिश खत्म", "रसोई बंद", "बहुत भीड़", "ग्राहक ने रद्द किया"].map(r => `<button data-r="${r}">${r}</button>`).join("")}</div>`); b.onclick = x => { const r = x.target.closest("[data-r]"); if (r) { act(id, { status: "rej", why: r.dataset.r }); closeSheet(); (after || draw)() } }; return true }
@@ -141,7 +141,7 @@ async function team() {
   b.onclick = async e => { const x = e.target.closest("[data-u]"); if (!x) return; try { await fs("PATCH", `/staff/${x.dataset.u}?updateMask.fieldPaths=role`, { fields: encF({ role: x.dataset.r }) }); L.find(u => u.id === x.dataset.u).role = x.dataset.r; show(); toast("बदल दिया ✔") } catch (er) { toast("नहीं बदला") } };
 }
 async function boot() {
-  if (DB.mode === "local") { DB.start(); draw(); return ME && autoPacks() }
+  if (DB.mode === "local") { DB.start(); draw(); if (ME && ME.role === "owner") custLoad().then(draw).catch(() => { }); return ME && autoPacks() }
   if (!AUTH.u) return fsLogin();
   try { let st = await fsGet("staff", AUTH.u.uid);
     if (!st) { const base = { name: LS.get("mr_name", "") || await askName(), phone: AUTH.u.ph, ts: now() };
@@ -150,7 +150,7 @@ async function boot() {
     ME = { name: st.name, role: st.role, uid: AUTH.u.uid }; LS.set("mr_me", ME)
   } catch (e) { if (!AUTH.u) return fsLogin("लॉगिन पुराना हो गया — दोबारा पिन डालें"); if (!ME) { $("#pg").innerHTML = `<div class="empty">⚠ खाता खुल नहीं पाया<br><b style="color:#b91c1c">${E(AERR(e.message))}</b><br><br><button class="btn" onclick="boot()">🔄 फिर कोशिश</button> <button class="btn gh" onclick="logout()">दोबारा लॉगिन</button></div>`; return } }
   if (!ROLES[ME.role]) { $("#me").textContent = "👤 " + ME.name; $("#pg").innerHTML = `<div class="empty">⏳ <b>${E(ME.name)}</b>, आपका खाता बन गया है।<br>${ME.role === "off" ? "यह खाता बंद है" : "मालिक की मंज़ूरी बाकी है"} — विक्रम जी से कहें कि ऐप के ☰ और → 👥 टीम में आपको मैनेजर/वेटर बनाएँ।<br><br><button class="btn" onclick="boot()">🔄 फिर देखें</button> <button class="btn gh" onclick="logout()">लॉगआउट</button></div>`; return }
-  DB.start({ staff: true }); native(); draw(); autoPacks();
+  DB.start({ staff: true }); native(); draw(); autoPacks(); if (ME.role === "owner") custLoad().then(draw).catch(() => { });
 }
 function draw() {
   if (!ME) return DB.mode === "local" ? login() : boot();
