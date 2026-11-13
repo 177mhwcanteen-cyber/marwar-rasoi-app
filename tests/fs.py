@@ -52,7 +52,7 @@ async def fake(route):
     await J({}, 400)
 async def cfg(route):
     r = await route.fetch(); t = await r.text()
-    t = re.sub(r'projectId: "[^"]*"', 'projectId: "demo-rasoi"', re.sub(r'apiKey: "[^"]*"', 'apiKey: "k"', t)).replace('org: "rasoi",', 'org: "rasoi", testClock: "17:30",'); ok('"demo-rasoi"' in t and "testClock" in t, "config बदली नहीं")
+    t = re.sub(r'projectId: "[^"]*"', 'projectId: "demo-rasoi"', re.sub(r'apiKey: "[^"]*"', 'apiKey: "k"', t)).replace('org: "rasoi",', 'org: "rasoi", testClock: "17:30",').replace('homeUrl: "http', 'homeUrl: "", x: "http'); ok('"demo-rasoi"' in t and "testClock" in t, "config बदली नहीं")
     await route.fulfill(response=r, body=t)
 async def main():
     async with async_playwright() as p:

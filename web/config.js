@@ -11,5 +11,7 @@ window.MR_CONFIG = {
   orderFrom: "08:00", orderTo: "22:30", hurryFrom: "21:00", // 9 बजे के बाद: "जल्दी ऑर्डर करें"
   lunch: ["11:30", "14:30"], dinner: ["19:15", "22:30"], eveFrom: "17:00", // शाम 5 के बाद: "रसोई 7:15 पर शुरू — सबसे पहले आपका ऑर्डर"
   prep: [15, 25, 35, 45], // स्वीकार करते समय "कितने मिनट में तैयार"
+  // 🏠 घर से ऑर्डर = 177 का बड़ा ऑर्डर-पेज (Restaurant · Grocery · Vegetables) — वहाँ से रसोई के ऑर्डर सीधे इसी Firebase में आते हैं (विक्रम जी, 13-11-2026)
+  homeUrl: "https://177mhwcanteen-cyber.github.io/177-MH-/order/?s=rasoi",
   base: "https://177mhwcanteen-cyber.github.io/marwar-rasoi-app/"
 };

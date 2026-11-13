@@ -11,6 +11,7 @@
 <script>
 /* मारवाड़ रसोई — ग्राहक का पेज।  …/t/?t=5 = टेबल 5 (ऑर्डर + 💧 पानी / 🙋 वेटर / 🧾 बिल)   ·   …/t/ (बिना t) = घर से ऑर्डर (🛵 Delivery / 🥡 Pickup) */
 const T = Math.max(0, Math.min(CFG.tables || 16, parseInt(new URLSearchParams(location.search).get("t") || "0", 10) || 0));
+if (!T && CFG.homeUrl) location.replace(CFG.homeUrl); /* बिना टेबल = घर का ऑर्डर → बड़ा ऑर्डर-पेज */
 const cart = {}, MINE = "mr_mine_" + T; let ALL = [], HOME = LS.get("mr_home", { type: "delivery", name: "", phone: "", addr: "" });
 const myIds = () => LS.get(MINE, []).filter(x => x.ts > now() - 8 * 3600e3).map(x => x.id);
 const mine = () => { const ids = myIds(); return ALL.filter(o => ids.includes(o.id)) };

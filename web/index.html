@@ -36,7 +36,7 @@ const card = o => {
   return `<div class="oc ${late ? "late" : ""}" style="--sc:${s.c}"><div class="r1"><span class="w">${isCall ? CALLS[o.call].ic + " " + where(o).replace("🍽️ ", "") + " — " + CALLS[o.call].hi : where(o)}</span><span class="pill">${s.hi}</span><span class="t">${hm(o.ts)} · ${mins(o.ts)} मि.</span></div>
   ${late ? `<div class="esc">⏱ ${Math.round(WAIT / 60000)} मिनट से ज़्यादा — मालिक को घंटी</div>` : ""}
   ${isCall ? "" : `<div class="who">${o.by === "customer" ? "📱 ग्राहक ने खुद (QR)" : "✍️ " + E(o.by || "")}${o.name ? " · " + E(o.name) : ""}${o.phone ? " · 📞 " + E(o.phone) : ""}${o.addr ? " · 📍 " + E(o.addr) : ""}${o.eta && o.status !== "done" ? " · ⏳ ~" + o.eta + " मि." : ""}${o.tm ? " · 🧾 TMBill " + E(o.tm) : ""}</div>
-  <div class="kot">${(o.items || []).map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(l.n)}<span>${rs(l.q * l.s)}</span></div>`).join("")}${o.note ? `<div class="nt">📝 ${E(o.note)}</div>` : ""}</div>`}
+  <div class="kot">${(o.items || []).map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(title(l.n))}<span>${rs(l.q * l.s)}</span></div>`).join("")}${o.note ? `<div class="nt">📝 ${E(o.note)}</div>` : ""}</div>`}
   <div class="r3">${isCall ? "<span class='tot'></span>" : `<span class="tot">${rs(o.total)}</span>`}${btn}</div></div>`;
 };
 function vOrders() {
@@ -68,7 +68,7 @@ function bar() {
 function review() {
   const L = cartLines(TAKE.cart); if (!L.length) return;
   if (TAKE.type === "table" && !TAKE.table) return toast("पहले टेबल चुनें");
-  const b = sheet(`<h3>${where(TAKE)} — ऑर्डर पक्का करें</h3><div class="kot">${L.map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(l.n)}<span>${rs(l.q * l.s)}</span></div>`).join("")}</div>
+  const b = sheet(`<h3>${where(TAKE)} — ऑर्डर पक्का करें</h3><div class="kot">${L.map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(title(l.n))}<span>${rs(l.q * l.s)}</span></div>`).join("")}</div>
   ${TAKE.type !== "table" ? `<input class="in" id="cn" placeholder="ग्राहक का नाम"><input class="in" id="cp" inputmode="numeric" maxlength="10" placeholder="मोबाइल नंबर">${TAKE.type === "delivery" ? `<input class="in" id="ca" placeholder="पता / क्वार्टर">` : ""}` : ""}
   <input class="in" id="nt" placeholder="नोट (कम तीखा, बिना प्याज़…)" value="${E(TAKE.note)}">
   <button class="btn ok big" id="send">✅ रसोई को भेजें · ${rs(cartTotal(TAKE.cart))}</button>`);
