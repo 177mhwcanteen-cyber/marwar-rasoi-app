@@ -572,7 +572,7 @@
    "c": "rice",
    "veg": true,
    "em": "🍚",
-   "p": "menu/rs-fried-rice.jpg"
+   "p": "menu/rs-fried-rice.jpg?v=1113"
   },
   {
    "id": "rs-veg-pulao",
@@ -582,7 +582,7 @@
    "c": "rice",
    "veg": true,
    "em": "🍚",
-   "p": "menu/rs-veg-pulao.jpg"
+   "p": "menu/rs-veg-pulao.jpg?v=1113"
   },
   {
    "id": "rs-plain-rice",
@@ -592,7 +592,7 @@
    "c": "rice",
    "veg": true,
    "em": "🍚",
-   "p": "menu/rs-plain-rice.jpg"
+   "p": "menu/rs-plain-rice.jpg?v=1113"
   },
   {
    "id": "rs-veg-biryani",
@@ -603,7 +603,7 @@
    "c": "rice",
    "veg": true,
    "em": "🍛",
-   "p": "menu/rs-veg-biryani.jpg"
+   "p": "menu/rs-veg-biryani.jpg?v=1113"
   },
   {
    "id": "rs-chicken-biryani",
@@ -614,7 +614,7 @@
    "c": "biryani",
    "veg": false,
    "em": "🍛",
-   "p": "menu/rs-chicken-biryani.jpg"
+   "p": "menu/rs-chicken-biryani.jpg?v=1113"
   },
   {
    "id": "rs-hyderabadi-chicken-biryani",
@@ -624,7 +624,7 @@
    "c": "biryani",
    "veg": false,
    "em": "🍛",
-   "p": "menu/rs-hyderabadi-chicken-biryani.jpg"
+   "p": "menu/rs-hyderabadi-chicken-biryani.jpg?v=1113"
   },
   {
    "id": "rs-chicken-dum-biryani",
