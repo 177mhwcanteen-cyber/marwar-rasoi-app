@@ -1,8 +1,8 @@
 /* मारवाड़ रसोई — सेटिंग (गुप्त नहीं; डेटा की सुरक्षा firestore.rules से)
-   firebase.projectId खाली है तब तक ऐप "डेमो मोड" में चलता है — डेटा सिर्फ़ इसी फोन/ब्राउज़र में। */
+   firebase.projectId खाली हो तो ऐप "डेमो मोड" में चलता है (टेस्ट इसी से चलते हैं)। 13-11-2026: विक्रम जी का प्रोजेक्ट marwar-rasoi-24d56 जुड़ा। */
 window.MR_CONFIG = {
   org: "rasoi", // 🏢 संस्था — कभी न बदलें (177 = "mh177", भैरव = "bhairav")
-  firebase: { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" },
+  firebase: { apiKey: "AIzaSyBRBI02RqhoNztujaI46xajEOu7ETguE4U", authDomain: "marwar-rasoi-24d56.firebaseapp.com", projectId: "marwar-rasoi-24d56", storageBucket: "marwar-rasoi-24d56.firebasestorage.app", messagingSenderId: "590704192333", appId: "1:590704192333:web:f19b44534dd3a4dcd2a504" },
   shop: "Marwar Rasoi", place: "Amenity Centre, Jalipa",
   tables: 16,
   manager: { name: "स्वरूप सा", phone: "9166753417" },

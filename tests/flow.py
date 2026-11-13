@@ -1,6 +1,6 @@
 """मारवाड़ रसोई — पूरा बहाव (डेमो मोड): टेबल-QR से ऑर्डर + पानी → मैनेजर स्वीकार → बनाना → परोसा → TMBill नं. → पूरा; वेटर का ऑर्डर; मालिक को देर की घंटी।
 चलाएँ: node scripts/build.mjs && python3 tests/flow.py www <shots-dir>"""
-import asyncio, sys, threading, http.server, functools, os
+import asyncio, re, sys, threading, http.server, functools, os
 from playwright.async_api import async_playwright
 WWW, SH = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "/tmp")
 srv = http.server.ThreadingHTTPServer(("127.0.0.1", 8822), functools.partial(http.server.SimpleHTTPRequestHandler, directory=WWW))
@@ -14,7 +14,7 @@ async def main():
         b = await p.chromium.launch(); cx = await b.new_context(viewport={"width": 390, "height": 780}, device_scale_factor=2)
         errs = []
         async def cfg(route):
-            r = await route.fetch(); t = (await r.text()).replace('org: "rasoi",', 'org: "rasoi", testClock: "20:00",'); ok("testClock" in t, "config"); await route.fulfill(response=r, body=t)
+            r = await route.fetch(); t = re.sub(r'projectId: "[^"]*"', 'projectId: ""', (await r.text()).replace('org: "rasoi",', 'org: "rasoi", testClock: "20:00",')); ok("testClock" in t, "config"); await route.fulfill(response=r, body=t)
         await cx.route("**/config.js*", cfg)
         st = await cx.new_page(); st.on("pageerror", lambda e: errs.append("staff: " + str(e)))
         await st.goto(B); await st.wait_for_selector("#lgo"); ok(await st.input_value("#ln") == "स्वरूप सा", "मैनेजर का नाम पहले से"); await st.click("#lgo")
