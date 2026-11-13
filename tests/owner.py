@@ -64,6 +64,11 @@ async def main():
         await s.fill("#cq", "kadai"); await s.wait_for_timeout(600); t = await s.inner_text("#cl"); ok("Test Vip" in t and await s.locator("[data-co]").count() == 1, "डिश से खोज")
         await s.fill("#cq", ""); await s.wait_for_timeout(600); await s.click('[data-cf="win"]'); ok("74 के मेस वाले" in await s.inner_text("#cl"), "टिप्पणी बनी रही"); await s.screenshot(path=SH + "/rasoi-cust.png"); await s.click("#sheet .sx")
         await s.evaluate("DB.add({kind:'order',type:'delivery',items:[{id:'x',n:'Dal',q:1,s:100,veg:1}],total:100,by:'customer',name:'T',phone:'9000000001',status:'new',log:[]})"); await s.click('[data-t="orders"]'); await s.wait_for_selector(".ctag"); ok("28 ऑर्डर" in await s.inner_text(".ctag"), "ऑर्डर कार्ड पर ग्राहक की पहचान"); await s.click('[data-t="more"]')
+        # 📊 रिपोर्ट + ⭐ ज़्यादा बिकने वाले
+        await s.evaluate("(async()=>{for(const n of [3,2,1]) await DB.add({kind:'order',type:'table',table:n,items:[{id:'rs-dal-tadka',n:'Dal Tadka',q:n,s:150,veg:1},{id:'rs-butter-naan',n:'Butter Naan',q:1,s:45,veg:1},{id:'rs-jeera-rice',n:'Jeera Rice',q:1,s:120,veg:1}],total:n*150+165,by:'रमेश',status:'done',tm:n==1?'':'55'})})()")
+        await s.wait_for_timeout(300); await s.click('[data-a="report"]'); await s.wait_for_selector(".bars"); t = await s.inner_text("#rp"); ok("Dal Tadka" in t and "6 बार" in t and "रमेश" in t and "3 ऑर्डर लिए" in t and "TMBill नंबर नहीं\n1" in t.replace("\n\n", "\n"), "रिपोर्ट: " + t[:400])
+        ok(await s.locator(".bars > div").count() == 7, "7 दिन की पट्टियाँ"); await s.screenshot(path=SH + "/rasoi-report.png"); await s.click("#sheet .sx")
+        await s.click('[data-t="take"]'); await s.click('[data-c="pop"]'); ok("Dal Tadka" in (await s.locator(".mc .nm").first.inner_text()).title() or "DAL" in (await s.locator(".mc .nm").first.inner_text()).upper(), "⭐ सबसे ऊपर दाल तड़का"); await s.click('[data-t="more"]')
         # मैनेजर को नक्शा/कोड नहीं
         await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); ok(await s.locator('[data-a="map"]').count() == 0 and await s.locator('[data-a="code"]').count() == 0 and await s.locator('[data-a="udhar"]').count() == 1 and await s.locator('[data-a="cust"]').count() == 0, "मैनेजर: नक्शा/कोड/ग्राहक नहीं, उधारी है")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
