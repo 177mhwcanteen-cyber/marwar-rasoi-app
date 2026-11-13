@@ -1,5 +1,11 @@
 /* मारवाड़ रसोई — एक ही रूप (मैरून + सुनहरा + क्रीम), हर जगह compact */
-@font-face{font-family:Mukta;font-weight:400 800;src:url(fonts/mukta-devanagari.woff2) format("woff2");unicode-range:U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+25CC,U+A830-A839,U+A8E0-A8FF}
+@font-face{font-family:Mukta;font-weight:400 599;font-display:swap;src:url(fonts/mukta-devanagari-500-normal.woff2) format("woff2");unicode-range:U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+25CC,U+A830-A839,U+A8E0-A8FF}
+@font-face{font-family:Mukta;font-weight:600 900;font-display:swap;src:url(fonts/mukta-devanagari-700-normal.woff2) format("woff2");unicode-range:U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+25CC,U+A830-A839,U+A8E0-A8FF}
+@font-face{font-family:Mukta;font-weight:400 599;font-display:swap;src:url(fonts/mukta-latin-500-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2013-2026,U+20AC,U+2190-2193,U+2212}
+@font-face{font-family:Mukta;font-weight:600 900;font-display:swap;src:url(fonts/mukta-latin-700-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2013-2026,U+20AC,U+2190-2193,U+2212}
+@font-face{font-family:"Baloo 2";font-weight:600 749;font-display:swap;src:url(fonts/baloo-2-latin-700-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2013-2026,U+20B9}
+@font-face{font-family:"Baloo 2";font-weight:750 900;font-display:swap;src:url(fonts/baloo-2-latin-800-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2013-2026,U+20B9}
+@font-face{font-family:"Baloo 2";font-weight:600 900;font-display:swap;src:url(fonts/baloo-2-devanagari-700-normal.woff2) format("woff2");unicode-range:U+0900-097F,U+200C-200D,U+20B9,U+25CC}
 :root{--m:#7a1c1c;--m2:#5a120e;--g:#e2b55a;--g2:#ffd77a;--bg:#fbf5e9;--card:#fff;--ink:#24160a;--mut:#7a6a55;--line:#eadfc8;--ok:#15803d}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0}
 body{font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,Mukta,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:calc(74px + env(safe-area-inset-bottom))}
@@ -75,3 +81,28 @@ button{font:inherit;color:inherit;cursor:pointer}input,textarea,select{font:inhe
 .crow.on{background:#ecfdf3;border-color:#86efac}.crow.on i{background:var(--ok);border-color:var(--ok)}.crow small{display:block;color:var(--mut);font-weight:600;font-size:11.5px}
 textarea.in{resize:vertical}
 .sx{position:sticky;top:0;float:right;z-index:2;width:34px;height:34px;border-radius:50%;border:0;background:#eadfc8;color:var(--m);font-weight:800;font-size:16px;margin:-4px -4px 0 8px}
+
+/* ───────── 🎨 नया रूप (13-11-2026, विक्रम जी: "177 वाले ऐप जैसा बढ़िया") — Baloo 2 + Mukta, बड़े गोल कार्ड, साफ़ टैब ───────── */
+body{font-family:Mukta,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15.5px;background:#f6f1e7;-webkit-font-smoothing:antialiased}
+.top{padding:calc(9px + env(safe-area-inset-top)) 12px 9px;background:linear-gradient(135deg,#8a2018 0%,#5a120e 70%);box-shadow:0 2px 10px rgba(60,10,5,.35);border-bottom:0}
+.top .lgo{width:38px;height:38px;border-radius:11px;flex:none;box-shadow:0 0 0 1.5px var(--g)}
+.top h1{font:800 20px/1.05 "Baloo 2",Georgia,serif;letter-spacing:.6px}.top small{font:500 12px/1.2 Mukta,system-ui}.top .me{font:700 13px "Baloo 2",Mukta;padding:5px 12px;background:rgba(255,255,255,.08)}
+.demo{font-family:"Baloo 2",Mukta}
+.tabs{box-shadow:0 -4px 16px rgba(60,30,5,.1);border-top:0;padding-top:3px}.tabs button{font:700 12px "Baloo 2",Mukta;padding:5px 2px 6px;gap:0}.tabs button span{font-size:22px;width:48px;height:28px;border-radius:99px;display:grid;place-items:center;transition:.15s}
+.tabs button.on span{background:#fbe9c6;box-shadow:inset 0 0 0 1.5px var(--g)}.tabs button.on{color:var(--m)}
+.h{font:800 16px "Baloo 2",Mukta;margin:12px 2px 6px}.h small{font:600 12.5px Mukta}
+.btn,.sbig,.seg button,.chips button,.row,.ad,.bar,.calls button,.tb,.crow{font-family:"Baloo 2",Mukta,sans-serif}
+.btn{border-radius:12px;font-size:15px;box-shadow:0 2px 6px rgba(90,18,14,.18)}.btn.gh{box-shadow:none}.btn.big{padding:13px;font-size:17px;border-radius:14px}
+.oc{border-radius:16px;padding:10px 12px;box-shadow:0 2px 8px rgba(60,30,5,.08);border:0;border-left:6px solid var(--sc,#999)}.oc .r1 .w{font:800 17px "Baloo 2",Mukta}.oc .tot{font:800 17px "Baloo 2",Mukta}
+.kot{border-radius:10px;font-size:15px}.pill{font-family:"Baloo 2",Mukta;font-size:12px;padding:1px 9px}
+.sum div{border:0;border-radius:16px;box-shadow:0 2px 8px rgba(60,30,5,.07);padding:9px 6px}.sum b{font:800 22px "Baloo 2",Georgia}.sum small{font-size:12px}.sum.own{margin-bottom:4px}.sum.own div{background:linear-gradient(135deg,#fff,#fdf3dd)}
+.row{border:0;border-radius:14px;box-shadow:0 1px 5px rgba(60,30,5,.07);padding:12px;font-size:15px;color:var(--ink);text-decoration:none}.row.sel{box-shadow:0 0 0 2px var(--m)}
+.tb{border-radius:18px;border:0;box-shadow:0 2px 8px rgba(60,30,5,.08)}.tb i{font:800 24px "Baloo 2",Georgia}
+.mc{border-radius:14px;border:0;box-shadow:0 2px 7px rgba(60,30,5,.08)}.ph{border-radius:11px}.nm{font-size:12.5px}.pr b{font:800 14.5px "Baloo 2"}
+.box{border-radius:22px 22px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25)}.box h3{font:800 19px "Baloo 2",Mukta}.in{border-radius:12px;padding:11px 12px;font-size:15.5px}.in:focus,.msr:focus{outline:2px solid var(--g);border-color:var(--g)}
+.empty{font-size:15px;line-height:1.5}.slist button,.sline,.arow,.crow{border:0;box-shadow:0 1px 4px rgba(60,30,5,.07);border-radius:12px}.arow.bad{box-shadow:0 0 0 1.5px #dc2626}
+#toast{font-family:"Baloo 2",Mukta;font-size:14.5px;padding:9px 18px}
+.lg h3{font:800 26px "Baloo 2",Georgia}
+/* 🗺️ नक्शा */
+.mapbox{height:46vh;border-radius:16px;overflow:hidden;margin-bottom:8px;background:#e8e2d2}.pin{position:absolute;transform:translate(-50%,-100%);background:var(--m);color:#fff;font:700 12px "Baloo 2",Mukta;padding:3px 8px;border-radius:99px 99px 99px 2px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff}.pin.off{background:#64748b}.pin.sel{background:#b91c1c;transform:translate(-50%,-100%) scale(1.15)}
+.dot{width:11px;height:11px;border-radius:50%;background:#cbd5e1;flex:none}.dot.on{background:#16a34a;box-shadow:0 0 0 3px #bbf7d0}

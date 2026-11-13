@@ -39,6 +39,15 @@ service cloud.firestore {
     match /assets/{id} { allow read, create, update: if staff(); allow delete: if false; }
     match /checks/{id} { allow read, create, update: if staff(); allow delete: if false; }
     match /conf/{id} { allow read, create, update: if staff(); allow delete: if false; }
+    // 💰 उधारी — सिर्फ़ मालिक और मैनेजर
+    match /udhar/{id} { allow read, create, update: if request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager'])); allow delete: if false; }
+    // 🚚 177 MH कैंटीन का ऐप "रसोई को दिया" माल यहाँ लिखता है (बिना लॉगिन, सिर्फ़ नया बनाना); पढ़ना/मिलान सिर्फ़ टीम
+    match /inbox/{id} {
+      allow read, update: if staff();
+      allow create: if staff() || (d().src == 'mh177' && d().status == 'new' && d().keys().hasOnly(['src', 'status', 'bill', 'ts', 'by', 'items', 'total'])
+        && d().items is list && d().items.size() <= 80 && d().ts is int && d().ts > request.time.toMillis() - 600000 && d().ts < request.time.toMillis() + 600000);
+      allow delete: if false;
+    }
     // लोकेशन (APK की TrackService): अपना ही लिखे, टीम पढ़े
     match /live/{uid} { allow read: if staff(); allow write: if request.auth != null && request.auth.uid == uid && staff(); }
     // लोकेशन के बिंदु (रास्ता): टीम लिखे, मालिक पढ़े

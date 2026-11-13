@@ -6,7 +6,7 @@ const ST8 = { cat: [], byId: {}, byBc: {}, mov: [], sit: {}, ready: false, view:
 const canStore = () => ME && ["owner", "manager"].includes(ME.role);
 async function storeLoad(force) {
   if (!ST8.cat.length) { const [a, b] = await Promise.all(["data/catalog.json", "data/raw.json"].map(f => fetch(f, { cache: "no-cache" }).then(r => r.json()).catch(() => []))); ST8.base = b.concat(a) }
-  if (!ST8.ready || force) { const [m, s] = await Promise.all([COL("stock").list().catch(() => ST8.mov), COL("sitems").list().catch(() => [])]); ST8.mov = m.sort((x, y) => x.ts - y.ts); ST8.sit = {}; s.forEach(x => ST8.sit[x.id] = x); ST8.ready = true }
+  if (!ST8.ready || force) { const [m, s, ib] = await Promise.all([COL("stock").list().catch(() => ST8.mov), COL("sitems").list().catch(() => []), COL("inbox").list().catch(() => [])]); ST8.inbox = ib.sort((x, y) => y.ts - x.ts); ST8.mov = m.sort((x, y) => x.ts - y.ts); ST8.sit = {}; s.forEach(x => ST8.sit[x.id] = x); ST8.ready = true }
   ST8.cat = ST8.base.concat(Object.values(ST8.sit).filter(x => x.custom)); ST8.byId = {}; ST8.byBc = {};
   ST8.cat.forEach(i => { ST8.byId[i.id] = i; (i.bc || []).forEach(b => ST8.byBc[b] = i) });
 }
@@ -25,6 +25,10 @@ function vStore() {
   const L = Object.keys(Q).map(id => ST8.byId[id] || { id, n: id, u: "" }).filter(i => !ST8.q || i.n.toLowerCase().includes(ST8.q)).sort((a, b) => a.n.localeCompare(b.n));
   return `<div class="sgrid"><button class="sbig in" data-se="in"><span>📥</span>आया<small>खरीद / माल आया</small></button>${canStore() ? `<button class="sbig out" data-se="out"><span>📤</span>रसोई को दिया<small>स्टॉक से निकला</small></button>` : `<button class="sbig out" data-se="req"><span>🙋</span>सामान चाहिए<small>मैनेजर से माँगें</small></button>`}</div>
   <div class="sum"><div><b>${rs(inT.reduce((t, m) => t + (m.total || 0), 0))}</b><small>आज की खरीद</small></div><div><b>${rs(wk)}</b><small>7 दिन की खरीद</small></div><div><b style="${low.length ? "color:#b91c1c" : ""}">${low.length}</b><small>कम स्टॉक</small></div></div>
+  ${(ST8.inbox || []).filter(x => x.status === "new" || (x.status === "no" && ME.role === "owner")).map(x => `<div class="oc ${x.status === "no" ? "late" : ""}" style="--sc:#1d4ed8"><div class="r1"><span class="w">🚚 177 MH कैंटीन से माल${x.bill ? " · बिल " + E(x.bill) : ""}</span><span class="t">${new Date(x.ts).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} ${hm(x.ts)}</span></div>
+    ${x.status === "no" ? `<div class="esc">⚠ मैनेजर ने कहा: नहीं मिला / कम मिला — ${E(x.rnote || "")} (${E(x.rby || "")})</div>` : `<div class="who">वहाँ से भेजा: ${E(x.by || "")} — गिनकर मिलाएँ, फिर दबाएँ</div>`}
+    <div class="kot">${(x.items || []).map(l => `<div><b style="min-width:auto">${qf(l.q)} ${E(l.u || "")}</b>${itName(l)}<span>${rs(l.q * (l.r || 0))}</span></div>`).join("")}</div>
+    <div class="r3"><span class="tot">${rs(x.total)}</span>${x.status === "new" && canStore() ? `<button class="btn gh sm" data-ibno="${x.id}">❌ नहीं / कम मिला</button><button class="btn ok" data-ibok="${x.id}">✔ पूरा मिल गया</button>` : ""}</div></div>`).join("")}
   ${req.length ? `<div class="h">🙋 रसोई की माँग <small>${req.length}</small></div>${req.map(movCard).join("")}` : ""}
   ${low.length ? `<div class="h">🔴 खत्म होने वाला</div><div class="chips">${low.map(i => `<button data-si="${i.id}">${E(i.n)} · ${qf(Q[i.id] || 0)} ${E(i.u)}</button>`).join("")}</div>` : ""}
   <div class="h">📊 स्टॉक <small>${Object.keys(Q).length} सामान</small><button class="btn gh sm" data-sr style="margin-left:auto">🔄</button></div>
@@ -83,7 +87,13 @@ function storeItem(id) {
     try { const m = await COL("stock").add({ t: "adj", by: ME.name, items: [{ id, n: it.n, u: it.u, q: d }], note: "गिनती: ऐप में " + qf(Q[id] || 0) + ", असल " + qf(+v) }); ST8.mov.push(m); closeSheet(); toast("गिनती ठीक की ✔ (मालिक को दिखेगी)"); draw() } catch (e) { $("#ie", b).textContent = "सेव नहीं हुआ" } };
 }
 async function storeGive(id) { const m = ST8.mov.find(x => x.id === id); if (!m) return; try { await COL("stock").set(id, { t: "out", status: "given", gby: ME.name, gts: now() }); Object.assign(m, { t: "out", status: "given", gby: ME.name, gts: now() }); if (m.oid) DB.upd(m.oid, { status: "done" }, ME.name).catch(() => 0); toast("दे दिया — स्टॉक घटा ✔"); draw() } catch (e) { toast("सेव नहीं हुआ — नेट देखें") } }
-document.addEventListener("click", e => { if (TAB !== "store") return; const t = e.target.closest("#pg [data-se],#pg [data-si],#pg [data-give],#pg [data-sr]"); if (!t) return;
+/* 🚚 177 MH से आया माल: मिल गया → स्टॉक में "आया"; नहीं/कम मिला → मालिक को लाल कार्ड (दोनों तरफ़ का मिलान) */
+async function inboxDo(id, okk) { const x = (ST8.inbox || []).find(v => v.id === id); if (!x) return;
+  try { if (okk) { const m = await COL("stock").add({ t: "in", by: ME.name, src: "177 MH कैंटीन", ref: x.bill || "", items: x.items, total: x.total || 0, note: "177 का बिल " + (x.bill || "") + " — मिलान से" }); ST8.mov.push(m); await COL("inbox").set(id, { status: "ok", rby: ME.name, rts: now() }); x.status = "ok"; toast("स्टॉक में जुड़ गया ✔"); return draw() }
+    const b = sheet(`<h3>❌ क्या नहीं मिला / कम मिला?</h3><textarea class="in" id="ibn" rows="3" placeholder="जैसे: तेल 15 की जगह 10 लीटर आया"></textarea><button class="btn big" id="ibs">मालिक को बताएँ</button>`);
+    $("#ibs", b).onclick = async () => { const n = $("#ibn", b).value.trim(); if (n.length < 3) return toast("लिखें क्या कम है"); await COL("inbox").set(id, { status: "no", rnote: n, rby: ME.name, rts: now() }); Object.assign(x, { status: "no", rnote: n, rby: ME.name }); closeSheet(); toast("मालिक को दिखेगा"); draw() } } catch (e) { toast("सेव नहीं हुआ — नेट देखें") } }
+document.addEventListener("click", e => { if (TAB !== "store") return; const t = e.target.closest("#pg [data-se],#pg [data-si],#pg [data-give],#pg [data-sr],#pg [data-ibok],#pg [data-ibno]"); if (!t) return;
+  if (t.dataset.ibok || t.dataset.ibno) return inboxDo(t.dataset.ibok || t.dataset.ibno, !!t.dataset.ibok);
   if (t.dataset.se) storeEntry(t.dataset.se); else if (t.dataset.si) storeItem(t.dataset.si); else if (t.dataset.give) storeGive(t.dataset.give); else storeLoad(true).then(draw) });
 document.addEventListener("input", e => { if (e.target.id === "stq") { ST8.q = e.target.value.trim().toLowerCase(); const p = e.target.selectionStart; draw(); const n = $("#stq"); n.focus(); try { n.setSelectionRange(p, p) } catch (x) { } } });
 

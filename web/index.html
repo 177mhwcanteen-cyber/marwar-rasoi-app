@@ -1,11 +1,11 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Marwar Rasoi — मैनेजर</title><meta name="theme-color" content="#7a1c1c"><link rel="icon" href="icon.png"><link rel="stylesheet" href="app.css"></head><body>
-<div class="top"><div><h1>MARWAR RASOI</h1><small id="sub">Amenity Centre, Jalipa</small></div><button class="me" id="me">👤</button></div>
+<div class="top"><img class="lgo" src="icon.png" alt=""><div><h1>MARWAR RASOI</h1><small id="sub">Amenity Centre, Jalipa</small></div><button class="me" id="me">👤</button></div>
 <div class="demo" id="demo" hidden>डेमो मोड — डेटा अभी सिर्फ़ इसी फोन में है (Firebase जुड़ते ही सब फोन पर चलेगा)</div>
 <div class="pg" id="pg"></div>
 <button class="bar" id="bar" hidden></button>
 <div class="tabs" id="tabs"><button data-t="orders"><span>🔔</span>ऑर्डर<b id="nb" hidden></b></button><button data-t="tables"><span>🍽️</span>टेबल</button><button data-t="take"><span>➕</span>ऑर्डर लें</button><button data-t="store"><span>📦</span>स्टोर</button><button data-t="more"><span>☰</span>और</button></div>
-<script src="config.js"></script><script src="core.js"></script><script src="store.js"></script>
+<script src="config.js"></script><script src="core.js"></script><script src="store.js"></script><script src="owner.js"></script>
 <script>
 /* मारवाड़ रसोई — मैनेजर / वेटर / मालिक ऐप (चरण 1+2) — नियम: docs/मारवाड़-रसोई-ऐप-प्रॉम्प्ट.txt */
 let ME = LS.get("mr_me", null), TAB = "orders", ALL = [], SIL = {}, TAKE = { type: "table", table: 0, cart: {}, note: "" };
@@ -42,7 +42,8 @@ const card = o => {
 function vOrders() {
   const T = todays(), g = st => T.filter(o => st.includes(o.status)).sort((a, b) => a.ts - b.ts);
   const N = g(["new"]), K = g(["acc", "cook"]), O = g(["out"]), D = g(["done", "rej"]).reverse();
-  return `${N.length ? `<div class="h">🔔 नए <small>${N.length}</small>${ringFor().length ? `<button class="btn gh sm" data-a="sil" style="margin-left:auto">🔕 चुप</button>` : ""}</div>${N.map(card).join("")}` : `<div class="empty">🔔 अभी कोई नया ऑर्डर नहीं</div>`}
+  const OK = T.filter(o => o.kind !== "call" && o.status !== "rej"), own = ME.role === "owner" ? `<div class="sum own"><div><b>${OK.length}</b><small>आज के ऑर्डर</small></div><div><b>${rs(OK.reduce((t, o) => t + (o.total || 0), 0))}</b><small>ऑर्डर की रकम</small></div><div><b>${T.filter(o => o.kind !== "call" && !o.tm && o.status === "done").length}</b><small>बिना TMBill नं.</small></div></div>` : "";
+  return `${own}${N.length ? `<div class="h">🔔 नए <small>${N.length}</small>${ringFor().length ? `<button class="btn gh sm" data-a="sil" style="margin-left:auto">🔕 चुप</button>` : ""}</div>${N.map(card).join("")}` : `<div class="empty">🔔 अभी कोई नया ऑर्डर नहीं</div>`}
   ${K.length ? `<div class="h">👨‍🍳 रसोई में <small>${K.length}</small></div>${K.map(card).join("")}` : ""}
   ${O.length ? `<div class="h">🍽️ परोसा / निकला <small>${O.length}</small></div>${O.map(card).join("")}` : ""}
   ${D.length ? `<div class="h">✔ आज के पूरे <small>${D.length}</small></div>${D.slice(0, 30).map(card).join("")}` : ""}`;
@@ -88,14 +89,15 @@ function vMore() {
   return `<div class="h">📊 आज</div><div class="sum"><div><b>${ok.length}</b><small>ऑर्डर</small></div><div><b>${rs(ok.reduce((t, o) => t + o.total, 0))}</b><small>कुल</small></div><div><b>${avg ? avg + "s" : "—"}</b><small>औसत स्वीकार-समय</small></div></div>
   ${ME.role === "owner" ? `<div class="row" style="margin-top:8px">⏱ ${Math.round(WAIT / 60000)} मिनट से देर वाले ऑर्डर (मालिक तक पहुँचे): <b style="margin-left:auto">${esc}</b></div><div class="row">🧾 बिना TMBill नंबर के पूरे ऑर्डर: <b style="margin-left:auto">${T.filter(o => o.status === "done" && !o.tm).length}</b></div>` : ""}
   <div class="h">🏨 होटल का प्रबंध</div><button class="row" data-a="check">✅ चेकलिस्ट — सुबह / रात / हफ़्ते की</button><button class="row" data-a="assets">🪑 प्रॉपर्टी रजिस्टर — कुर्सी, टेबल, बर्तन…</button>
-  ${ME.role === "owner" ? `<button class="row" data-a="msg">📣 मैनेजर को संदेश भेजें (फोन पर अलार्म)</button>` : ""}
+  ${["owner", "manager"].includes(ME.role) ? `<button class="row" data-a="udhar">💰 उधारी — किस पर कितना बाकी, WhatsApp याद</button>` : ""}
+  ${ME.role === "owner" ? `<button class="row" data-a="map">🗺️ टीम कहाँ है — नक्शा और आज का रास्ता</button><button class="row" data-a="msg">📣 मैनेजर को संदेश भेजें (फोन पर अलार्म)</button><button class="row" data-a="code">🤖 Claude का कोड लगाएँ (उधारी / ग्राहक / सूची)</button>` : ""}
   <div class="h">🛠️ औज़ार</div><a class="row" href="qr.html" target="_blank">🖨️ टेबल के QR कार्ड छापें (${CFG.tables})</a><a class="row" href="t/?t=1" target="_blank">📱 ग्राहक का टेबल-पेज देखें (टेबल 1)</a>
   <button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button>${DB.mode === "fs" ? (ME.role === "owner" ? `<button class="row" data-a="team">👥 टीम — मैनेजर/वेटर जोड़ें, मंज़ूरी दें</button>` : "") + `<button class="row" data-a="logout">🚪 ${E(ME.name)} · ${ROLES[ME.role]} — लॉगआउट</button>` : `<button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
 }
 function onAct(e, after) {
   const a = e.target.closest("[data-a]"); if (!a) return false; const id = a.dataset.id, k = a.dataset.a;
   if (k === "sil") { pend().forEach(o => SIL[o.id] = 1); ring() }
-  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true;
+  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true; else if (k === "map") return mapSheet(), true; else if (k === "udhar") return udharSheet(), true; else if (k === "code") return codeSheet(), true;
   else if (k === "msg") { const b = sheet(`<h3>📣 मैनेजर को संदेश</h3><textarea class="in" id="mt" rows="3" maxlength="190" placeholder="जैसे: शाम 7 बजे 20 लोगों की पार्टी है, तैयारी रखें"></textarea><button class="btn big" id="ms">भेजें — मैनेजर के फोन पर घंटी बजेगी</button>`); $("#ms", b).onclick = () => { const n = $("#mt", b).value.trim(); if (n.length < 3) return toast("संदेश लिखें"); DB.add({ kind: "call", call: "msg", type: "parcel", table: 0, by: ME.name, note: n }).then(() => { closeSheet(); toast("संदेश गया ✔"); TAB = "orders"; draw() }).catch(() => toast("नहीं गया — नेट देखें")) }; return true } else if (k === "logout") return logout(), true;
   else if (k === "acc") { const b = sheet(`<h3>✅ कितने मिनट में तैयार?</h3><div class="seg">${(CFG.prep || [15, 25, 35]).map(m => `<button data-m="${m}" style="flex:1">${m} मिनट</button>`).join("")}</div>`); b.onclick = x => { const m = x.target.closest("[data-m]"); if (m) { act(id, { status: "acc", eta: +m.dataset.m }); closeSheet(); (after || draw)() } }; return true }
   else if (k === "rej") { const b = sheet(`<h3>❌ मना करने का कारण</h3><div class="seg">${["डिश खत्म", "रसोई बंद", "बहुत भीड़", "ग्राहक ने रद्द किया"].map(r => `<button data-r="${r}">${r}</button>`).join("")}</div>`); b.onclick = x => { const r = x.target.closest("[data-r]"); if (r) { act(id, { status: "rej", why: r.dataset.r }); closeSheet(); (after || draw)() } }; return true }
@@ -139,7 +141,7 @@ async function team() {
   b.onclick = async e => { const x = e.target.closest("[data-u]"); if (!x) return; try { await fs("PATCH", `/staff/${x.dataset.u}?updateMask.fieldPaths=role`, { fields: encF({ role: x.dataset.r }) }); L.find(u => u.id === x.dataset.u).role = x.dataset.r; show(); toast("बदल दिया ✔") } catch (er) { toast("नहीं बदला") } };
 }
 async function boot() {
-  if (DB.mode === "local") { DB.start(); return draw() }
+  if (DB.mode === "local") { DB.start(); draw(); return ME && autoPacks() }
   if (!AUTH.u) return fsLogin();
   try { let st = await fsGet("staff", AUTH.u.uid);
     if (!st) { const base = { name: LS.get("mr_name", "") || await askName(), phone: AUTH.u.ph, ts: now() };
@@ -148,7 +150,7 @@ async function boot() {
     ME = { name: st.name, role: st.role, uid: AUTH.u.uid }; LS.set("mr_me", ME)
   } catch (e) { if (!AUTH.u) return fsLogin("लॉगिन पुराना हो गया — दोबारा पिन डालें"); if (!ME) { $("#pg").innerHTML = `<div class="empty">⚠ खाता खुल नहीं पाया<br><b style="color:#b91c1c">${E(AERR(e.message))}</b><br><br><button class="btn" onclick="boot()">🔄 फिर कोशिश</button> <button class="btn gh" onclick="logout()">दोबारा लॉगिन</button></div>`; return } }
   if (!ROLES[ME.role]) { $("#me").textContent = "👤 " + ME.name; $("#pg").innerHTML = `<div class="empty">⏳ <b>${E(ME.name)}</b>, आपका खाता बन गया है।<br>${ME.role === "off" ? "यह खाता बंद है" : "मालिक की मंज़ूरी बाकी है"} — विक्रम जी से कहें कि ऐप के ☰ और → 👥 टीम में आपको मैनेजर/वेटर बनाएँ।<br><br><button class="btn" onclick="boot()">🔄 फिर देखें</button> <button class="btn gh" onclick="logout()">लॉगआउट</button></div>`; return }
-  DB.start({ staff: true }); native(); draw();
+  DB.start({ staff: true }); native(); draw(); autoPacks();
 }
 function draw() {
   if (!ME) return DB.mode === "local" ? login() : boot();
