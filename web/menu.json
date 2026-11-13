@@ -133,7 +133,7 @@
    "c": "veg",
    "veg": true,
    "em": "🥜",
-   "p": "menu/rs-kaju-masala.jpg"
+   "p": "menu/rs-kaju-masala.jpg?v=1113"
   },
   {
    "id": "rs-kaju-paneer-masala",
@@ -143,7 +143,7 @@
    "c": "veg",
    "veg": true,
    "em": "🥜",
-   "p": "menu/rs-kaju-paneer-masala.jpg"
+   "p": "menu/rs-kaju-paneer-masala.jpg?v=1113"
   },
   {
    "id": "rs-kaju-curry",
@@ -154,7 +154,7 @@
    "c": "veg",
    "veg": true,
    "em": "🥜",
-   "p": "menu/rs-kaju-curry.jpg"
+   "p": "menu/rs-kaju-curry.jpg?v=1113"
   },
   {
    "id": "rs-matar-paneer",
@@ -165,7 +165,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-matar-paneer.jpg"
+   "p": "menu/rs-matar-paneer.jpg?v=1113"
   },
   {
    "id": "rs-shahi-paneer",
@@ -176,7 +176,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-shahi-paneer.jpg"
+   "p": "menu/rs-shahi-paneer.jpg?v=1113"
   },
   {
    "id": "rs-paneer-butter-masala",
@@ -187,7 +187,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-paneer-butter-masala.jpg"
+   "p": "menu/rs-paneer-butter-masala.jpg?v=1113"
   },
   {
    "id": "rs-paneer-lababdar",

@@ -1,5 +1,5 @@
 """📸 6 डिश वाली तस्वीर (3×2) काटकर डिश पर लगाना — क्रम docs/photo-sets.json।
-चलाएँ: python3 scripts/photoset.py <तस्वीर> <सेट नंबर> [177-MH- का रास्ता]   (हर फोटो 340×340, ≤20 KB; json में p के आगे ?v= ताकि पुरानी फोटो कैश से न दिखे)"""
+चलाएँ: python3 scripts/photoset.py <तस्वीर> <सेट नंबर> [177-MH- का रास्ता]   (टाइल लंबी हो और कटोरा नीचे हो तो DY=0.08 आगे लगाएँ; हर फोटो 340×340, ≤20 KB; json में p के आगे ?v= ताकि पुरानी फोटो कैश से न दिखे)"""
 import sys, json, io, os, re, time
 from PIL import Image
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,7 +11,7 @@ def jpg(t):
         if b.tell() <= 20000: return b.getvalue()
     raise SystemExit("20 KB में नहीं आई")
 for k, iid in enumerate(ids):
-    c, r = k % 3, k // 3; s = min(tw, th) * 0.955; cx, cy = (c + .5) * tw, (r + .5) * th
+    c, r = k % 3, k // 3; s = min(tw, th) * 0.955; cx, cy = (c + .5) * tw, (r + .5 + float(os.environ.get("DY", 0))) * th
     d = jpg(img.crop((round(cx - s / 2), round(cy - s / 2), round(cx + s / 2), round(cy + s / 2))).resize((340, 340), Image.LANCZOS))
     for p in [R + "/web/menu/" + iid + ".jpg"] + ([mh + "/web/order/rasoi/" + iid + ".jpg"] if mh else []): open(p, "wb").write(d)
     print(iid, len(d))
