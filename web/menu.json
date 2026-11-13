@@ -260,7 +260,7 @@
    "c": "veg",
    "veg": true,
    "em": "🍅",
-   "p": "menu/rs-sev-tamatar.jpg"
+   "p": "menu/rs-sev-tamatar.jpg?v=1113"
   },
   {
    "id": "rs-manchurian-gravy",
@@ -270,7 +270,7 @@
    "c": "veg",
    "veg": true,
    "em": "🥢",
-   "p": "menu/rs-manchurian-gravy.jpg"
+   "p": "menu/rs-manchurian-gravy.jpg?v=1113"
   },
   {
    "id": "rs-manchurian-dry",
@@ -280,7 +280,7 @@
    "c": "veg",
    "veg": true,
    "em": "🥢",
-   "p": "menu/rs-manchurian-dry.jpg"
+   "p": "menu/rs-manchurian-dry.jpg?v=1113"
   },
   {
    "id": "rs-paneer-tikka",
@@ -291,7 +291,7 @@
    "c": "veg",
    "veg": true,
    "em": "🍢",
-   "p": "menu/rs-paneer-tikka.jpg"
+   "p": "menu/rs-paneer-tikka.jpg?v=1113"
   },
   {
    "id": "rs-chilli-paneer-gravy",
@@ -301,7 +301,7 @@
    "c": "veg",
    "veg": true,
    "em": "🌶️",
-   "p": "menu/rs-chilli-paneer-gravy.jpg"
+   "p": "menu/rs-chilli-paneer-gravy.jpg?v=1113"
   },
   {
    "id": "rs-chilli-paneer-dry",
@@ -311,7 +311,7 @@
    "c": "veg",
    "veg": true,
    "em": "🌶️",
-   "p": "menu/rs-chilli-paneer-dry.jpg"
+   "p": "menu/rs-chilli-paneer-dry.jpg?v=1113"
   },
   {
    "id": "rs-paneer-malai-tikka",
