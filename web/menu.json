@@ -197,7 +197,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-paneer-lababdar.jpg"
+   "p": "menu/rs-paneer-lababdar.jpg?v=1113"
   },
   {
    "id": "rs-paneer-bhurji",
@@ -207,7 +207,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-paneer-bhurji.jpg"
+   "p": "menu/rs-paneer-bhurji.jpg?v=1113"
   },
   {
    "id": "rs-paneer-handi",
@@ -217,7 +217,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-paneer-handi.jpg"
+   "p": "menu/rs-paneer-handi.jpg?v=1113"
   },
   {
    "id": "rs-paneer-masala",
@@ -227,7 +227,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-paneer-masala.jpg"
+   "p": "menu/rs-paneer-masala.jpg?v=1113"
   },
   {
    "id": "rs-kadai-paneer",
@@ -238,7 +238,7 @@
    "c": "veg",
    "veg": true,
    "em": "🧀",
-   "p": "menu/rs-kadai-paneer.jpg"
+   "p": "menu/rs-kadai-paneer.jpg?v=1113"
   },
   {
    "id": "rs-mix-veg",
@@ -249,7 +249,7 @@
    "c": "veg",
    "veg": true,
    "em": "🥕",
-   "p": "menu/rs-mix-veg.jpg"
+   "p": "menu/rs-mix-veg.jpg?v=1113"
   },
   {
    "id": "rs-sev-tamatar",
