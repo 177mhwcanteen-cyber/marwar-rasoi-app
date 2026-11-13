@@ -5,7 +5,7 @@ service cloud.firestore {
   match /databases/{db}/documents {
     function owner() { return request.auth != null && request.auth.token.email in ['9509553600@marwar-rasoi.app']; }
     function role() { return get(/databases/$(db)/documents/staff/$(request.auth.uid)).data.role; }
-    function staff() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager', 'waiter'])); }
+    function staff() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager', 'waiter', 'kitchen'])); }
     function d() { return request.resource.data; }
     function istMin() { return math.floor(((request.time.toMillis() + 19800000) % 86400000) / 60000); }
 
@@ -18,6 +18,7 @@ service cloud.firestore {
         && d().keys().hasOnly(['kind', 'call', 'type', 'table', 'items', 'total', 'note', 'by', 'name', 'phone', 'addr', 'ts', 'status', 'log'])
         && istMin() >= 480 && istMin() < 1350 // ग्राहक का ऑर्डर सिर्फ़ सुबह 8:00 से रात 10:30 (भारत का समय)
         && d().ts is int && d().ts > request.time.toMillis() - 300000 && d().ts < request.time.toMillis() + 300000
+        && (!('call' in d()) || d().call in ['water', 'waiter', 'bill'])
         && (!('items' in d()) || (d().items is list && d().items.size() <= 40))
         && (!('note' in d()) || d().note.size() <= 200) && (!('addr' in d()) || d().addr.size() <= 100) && (!('name' in d()) || d().name.size() <= 60)
         && (!('table' in d()) || (d().table is int && d().table >= 0 && d().table <= 40))
@@ -32,6 +33,12 @@ service cloud.firestore {
       allow update: if owner();
       allow delete: if false;
     }
+    // 📦 स्टोर (आया/गया/माँग/गिनती-सुधार), सामान-सूची, 🪑 प्रॉपर्टी, ✅ चेकलिस्ट — सिर्फ़ टीम; मिटाना किसी को नहीं
+    match /stock/{id} { allow read, create, update: if staff(); allow delete: if false; }
+    match /sitems/{id} { allow read, create, update: if staff(); allow delete: if false; }
+    match /assets/{id} { allow read, create, update: if staff(); allow delete: if false; }
+    match /checks/{id} { allow read, create, update: if staff(); allow delete: if false; }
+    match /conf/{id} { allow read, create, update: if staff(); allow delete: if false; }
     // लोकेशन (APK की TrackService): अपना ही लिखे, टीम पढ़े
     match /live/{uid} { allow read: if staff(); allow write: if request.auth != null && request.auth.uid == uid && staff(); }
     // लोकेशन के बिंदु (रास्ता): टीम लिखे, मालिक पढ़े

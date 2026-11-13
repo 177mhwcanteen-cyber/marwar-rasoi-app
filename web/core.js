@@ -17,7 +17,7 @@ const ST = {
   new: { hi: "नया", en: "Placed", c: "#b91c1c" }, acc: { hi: "स्वीकार", en: "Accepted", c: "#b45309" }, cook: { hi: "बन रहा है", en: "Cooking", c: "#a16207" },
   out: { hi: "परोसा / निकला", en: "Served", c: "#15803d" }, done: { hi: "पूरा", en: "Completed", c: "#475569" }, rej: { hi: "मना", en: "Cancelled", c: "#64748b" }
 };
-const CALLS = { water: { ic: "💧", hi: "पानी", en: "Water" }, waiter: { ic: "🙋", hi: "वेटर बुलाया", en: "Call waiter" }, bill: { ic: "🧾", hi: "बिल माँगा", en: "Bill please" } };
+const CALLS = { water: { ic: "💧", hi: "पानी", en: "Water" }, waiter: { ic: "🙋", hi: "वेटर बुलाया", en: "Call waiter" }, bill: { ic: "🧾", hi: "बिल माँगा", en: "Bill please" }, store: { ic: "📦", hi: "रसोई ने सामान माँगा", en: "Store request" }, msg: { ic: "📣", hi: "मालिक का संदेश", en: "Message" } };
 const where = o => o.type === "table" ? "🍽️ टेबल " + o.table : o.type === "parcel" ? "🥡 पार्सल" : "🛵 डिलीवरी";
 
 /* ───────── Firestore (REST, बिना SDK — हल्का) + लॉगिन (मोबाइल नंबर + पिन → Firebase Email/Password) ───────── */
@@ -89,6 +89,20 @@ const DB = FS_ON ? (() => {
     async upd(id, p, by) { const a = all(), o = a.find(x => x.id === id); if (!o) return null; Object.assign(o, p); if (p.status) (o.log = o.log || []).push({ s: p.status, ts: now(), by: by || "" }); save(a); return o }
   };
 })();
+/* सामान्य संग्रह (stock, sitems, assets, checks, conf): डेमो में इसी फोन में, असली मोड में Firestore। list() · add(o) · set(id, खाने) */
+const COL = name => FS_ON ? {
+  list: () => fsQuery({ from: [{ collectionId: name }], limit: 3000 }),
+  async add(o) { const id = newId(); o.ts = o.ts || now(); await fs("POST", `/${name}?documentId=${id}`, { fields: encF(o) }); return Object.assign(o, { id }) },
+  async set(id, o) { await fs("PATCH", `/${name}/${id}?` + Object.keys(o).map(k => "updateMask.fieldPaths=" + k).join("&"), { fields: encF(o) }); return o }
+} : {
+  async list() { return LS.get("mr_c_" + name, []) },
+  async add(o) { const a = LS.get("mr_c_" + name, []); o.id = newId(); o.ts = o.ts || now(); a.push(o); LS.set("mr_c_" + name, a); return o },
+  async set(id, o) { const a = LS.get("mr_c_" + name, []); let x = a.find(v => v.id === id); if (!x) { x = { id }; a.push(x) } Object.assign(x, o); LS.set("mr_c_" + name, a); return x }
+};
+const dkey = (t = now()) => { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") };
+const qf = n => (Math.round(n * 1000) / 1000).toLocaleString("en-IN");
+/* 📷 फोटो ≤20 KB (प्रॉपर्टी/पर्ची) */
+const shrink = file => new Promise((res, rej) => { const im = new Image(); im.onload = () => { let w = 480, q = .7, out = ""; for (let k = 0; k < 8; k++) { const c = document.createElement("canvas"), r = Math.min(1, w / Math.max(im.width, im.height)); c.width = im.width * r; c.height = im.height * r; c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); out = c.toDataURL("image/jpeg", q); if (out.length * .75 <= 20000) break; if (q > .4) q -= .12; else w *= .82 } URL.revokeObjectURL(im.src); res(out) }; im.onerror = rej; im.src = URL.createObjectURL(file) });
 /* APK के भीतर? (Capacitor) — असली अलार्म/लोकेशन की सेवा */
 const NAT = () => { try { return window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() ? Capacitor.Plugins.BtPrinter : null } catch (e) { return null } };
 
@@ -130,7 +144,7 @@ const cartLines = cart => Object.keys(cart).filter(id => MENU.byId[id]).map(id =
 const cartTotal = cart => cartLines(cart).reduce((t, l) => t + l.q * l.s, 0);
 
 /* नीचे से उठने वाली शीट */
-function sheet(html) { let s = $("#sheet"); if (!s) { s = document.createElement("div"); s.id = "sheet"; document.body.appendChild(s) } s.innerHTML = `<div class="scrim" data-x></div><div class="box">${html}</div>`; s.className = "open"; s.onclick = e => { if (e.target.closest("[data-x]")) closeSheet() }; return $(".box", s) }
+function sheet(html) { let s = $("#sheet"); if (!s) { s = document.createElement("div"); s.id = "sheet"; document.body.appendChild(s) } s.innerHTML = `<div class="scrim" data-x></div><div class="box"><button class="sx" data-x aria-label="बंद करें">✕</button>${html}</div>`; s.className = "open"; s.onclick = e => { if (e.target.closest("[data-x]")) closeSheet() }; return $(".box", s) }
 function closeSheet() { const s = $("#sheet"); if (s) { s.className = ""; s.innerHTML = "" } }
 function toast(t) { let e = $("#toast"); if (!e) { e = document.createElement("div"); e.id = "toast"; document.body.appendChild(e) } e.textContent = t; e.className = "on"; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = "", 2200) }
 

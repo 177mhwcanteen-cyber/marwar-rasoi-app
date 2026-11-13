@@ -8,7 +8,7 @@ button{font:inherit;color:inherit;cursor:pointer}input,textarea,select{font:inhe
 .top h1{margin:0;font:800 18px/1.1 Georgia,serif;letter-spacing:1.5px}.top small{display:block;font:600 11.5px/1.2 system-ui;color:#f3dcae;letter-spacing:0}
 .top .me{margin-left:auto;border:1px solid var(--g);background:transparent;color:var(--g2);border-radius:99px;padding:4px 10px;font-weight:700;font-size:12.5px;white-space:nowrap}
 .demo{background:#fff3cd;color:#7a4b00;font-size:12px;font-weight:700;text-align:center;padding:3px 8px}
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 .tabs button{border:0;background:none;padding:7px 2px 6px;font-size:11.5px;font-weight:700;color:var(--mut);display:grid;justify-items:center;gap:1px;position:relative}
 .tabs button span{font-size:21px;line-height:1}.tabs button.on{color:var(--m)}.tabs button b{position:absolute;top:3px;left:calc(50% + 8px);background:#dc2626;color:#fff;border-radius:99px;font-size:10.5px;min-width:17px;height:17px;line-height:17px;padding:0 4px}
 .pg{padding:8px 10px}.h{font:800 14px system-ui;color:var(--m);margin:10px 2px 5px;display:flex;align-items:center;gap:6px}.h small{font-weight:600;color:var(--mut)}
@@ -59,3 +59,19 @@ button{font:inherit;color:inherit;cursor:pointer}input,textarea,select{font:inhe
 /* लॉगिन */
 .lg{text-align:center;margin:4px 0 10px}.lg img{width:72px;height:72px;border-radius:18px;box-shadow:0 6px 18px rgba(90,18,14,.35)}.lg h3{font:800 24px Georgia,serif;letter-spacing:1.5px;margin:8px 0 2px}.lg p{margin:0;color:var(--mut);font-size:13.5px}
 .in.big{padding:13px 12px;font-size:17px;border-radius:12px;margin:5px 0}.err{color:#b91c1c;font-weight:700;font-size:13.5px;min-height:18px;margin:2px 2px 6px;overflow-wrap:anywhere}.btn:disabled{opacity:.6}
+
+/* 📦 स्टोर · 🪑 प्रॉपर्टी · ✅ चेकलिस्ट */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.sbig{border:0;border-radius:16px;padding:12px 8px;color:#fff;font-weight:800;font-size:17px;display:grid;justify-items:center;gap:1px;box-shadow:0 4px 12px rgba(0,0,0,.18)}.sbig span{font-size:30px;line-height:1.1}.sbig small{font-weight:600;font-size:11.5px;opacity:.9}
+.sbig.in{background:linear-gradient(135deg,#15803d,#22a34f)}.sbig.out{background:linear-gradient(135deg,#b45309,#e08a1e)}
+.slist{display:grid;gap:4px;margin-bottom:6px}.slist button{display:flex;gap:8px;align-items:center;text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700;font-size:13.5px}.slist button b{margin-left:auto;white-space:nowrap;color:var(--m)}.slist button.neg b{color:#b91c1c}
+.sline{display:flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 8px;margin-bottom:5px;font-weight:700;font-size:13.5px}.sline span{flex:1;min-width:0}.sline small{display:block;color:var(--mut);font-weight:600;font-size:11.5px}
+.sline input[type=number]{width:64px;height:36px;border:1.5px solid var(--line);border-radius:8px;text-align:center;font-weight:800;font-size:15px;padding:0 2px}.sline em{font-style:normal;color:var(--mut);font-size:12px;min-width:18px}.sline button{border:0;background:#fee2e2;color:#b91c1c;border-radius:8px;width:30px;height:30px;font-weight:800}
+.stot{text-align:right;font:800 17px Georgia,serif;color:var(--m);margin:2px 4px 6px}.hint{color:var(--mut);font-size:12.5px;margin:6px 2px}
+.scan{position:fixed;inset:0;z-index:40;background:#000;display:grid;place-items:center}.scan video{width:100%;height:100%;object-fit:cover}.scan i{position:absolute;left:10%;right:10%;top:42%;height:16%;border:3px solid var(--g2);border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.45)}.scan .btn{position:absolute;bottom:40px}
+.arow{display:flex;gap:7px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:5px 7px;margin-bottom:4px;font-weight:700;font-size:13px}.arow.bad{border-color:#dc2626;background:#fff5f5}.arow span{flex:1;min-width:0}.arow small{display:block;color:var(--mut);font-weight:600;font-size:11px}
+.arow i{font-style:normal;font-size:10px;color:var(--mut);text-align:center;display:grid}.arow input[type=number]{width:52px;height:32px;border:1.5px solid var(--line);border-radius:8px;text-align:center;font-weight:800;font-size:14px}.arow input:disabled{background:#f4efe3;color:var(--ink)}
+.aph{flex:none;width:40px;height:40px;border-radius:9px;background:#f4ead4 center/cover;display:grid;place-items:center;font-size:17px;cursor:pointer}
+.crow{display:flex;gap:9px;align-items:center;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 10px;margin-top:5px;font-weight:700;font-size:14px}.crow i{flex:none;width:26px;height:26px;border-radius:8px;border:2px solid #cbbf9f;display:grid;place-items:center;font-style:normal;color:#fff;font-weight:800}
+.crow.on{background:#ecfdf3;border-color:#86efac}.crow.on i{background:var(--ok);border-color:var(--ok)}.crow small{display:block;color:var(--mut);font-weight:600;font-size:11.5px}
+textarea.in{resize:vertical}
+.sx{position:sticky;top:0;float:right;z-index:2;width:34px;height:34px;border-radius:50%;border:0;background:#eadfc8;color:var(--m);font-weight:800;font-size:16px;margin:-4px -4px 0 8px}

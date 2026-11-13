@@ -70,7 +70,7 @@ async def main():
         await mg.fill("#fk", "654321"); await mg.click("#fgo"); await mg.wait_for_selector("#nm"); await mg.fill("#nm", "स्वरूप सा"); await mg.click("#nmo"); await mg.wait_for_selector("text=मंज़ूरी बाकी")
         ok(sv(DOCS["staff/u2"], "role") == "pending", "मैनेजर pending"); ok(len([k for k in DOCS if k.startswith("orders/")]) == 0, "कोई ऑर्डर नहीं")
         await ow.click('[data-t="more"]'); await ow.click('[data-a="team"]'); await ow.wait_for_selector('[data-u="u2"][data-r="manager"]'); await ow.click('[data-u="u2"][data-r="manager"]'); await ow.wait_for_timeout(300)
-        ok(sv(DOCS["staff/u2"], "role") == "manager", "मालिक ने मैनेजर बनाया"); await ow.click("#sheet .scrim")
+        ok(sv(DOCS["staff/u2"], "role") == "manager", "मालिक ने मैनेजर बनाया"); await ow.click("#sheet .sx")
         await mg.click("text=फिर देखें"); await mg.wait_for_selector("#tabs button.on"); ok("स्वरूप सा" in await mg.inner_text("#me"), "मैनेजर अंदर")
         cu = await page("customer"); await cu.goto(B + "t/"); await cu.wait_for_selector(".mc"); ok("Home order" in await cu.inner_text("#tno") and "Free home delivery" in await cu.inner_text("#hero") and "Kitchen starts at 7:15 PM" in await cu.inner_text("#hero"), "घर का ऑर्डर-पेज")
         await cu.click('.mc[data-id="rs-paneer-butter-masala"] .ad'); await cu.click("#bar"); await cu.click("#send"); await cu.wait_for_timeout(200); ok(await cu.locator("#send").is_visible(), "नाम के बिना नहीं जाता")
