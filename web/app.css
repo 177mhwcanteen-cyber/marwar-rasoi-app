@@ -55,3 +55,7 @@ button{font:inherit;color:inherit;cursor:pointer}input,textarea,select{font:inhe
 /* ग्राहक (टेबल) */
 .calls{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:8px 0 2px}.calls button{border:1.5px solid var(--g);background:#fff;border-radius:12px;padding:8px 2px;font-weight:800;font-size:13px;display:grid;justify-items:center;gap:1px}.calls button span{font-size:22px}.calls button.sent{background:#ecfdf3;border-color:var(--ok)}
 .trk{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 10px;margin:8px 0}.steps{display:flex;gap:3px;margin:6px 0 3px}.steps i{flex:1;height:5px;border-radius:9px;background:#eadfc8}.steps i.on{background:var(--ok)}
+
+/* लॉगिन */
+.lg{text-align:center;margin:4px 0 10px}.lg img{width:72px;height:72px;border-radius:18px;box-shadow:0 6px 18px rgba(90,18,14,.35)}.lg h3{font:800 24px Georgia,serif;letter-spacing:1.5px;margin:8px 0 2px}.lg p{margin:0;color:var(--mut);font-size:13.5px}
+.in.big{padding:13px 12px;font-size:17px;border-radius:12px;margin:5px 0}.err{color:#b91c1c;font-weight:700;font-size:13.5px;min-height:18px;margin:2px 2px 6px;overflow-wrap:anywhere}.btn:disabled{opacity:.6}

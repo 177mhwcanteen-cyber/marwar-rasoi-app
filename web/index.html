@@ -102,16 +102,29 @@ function onAct(e, after) {
 }
 function ring() { const n = pend().length, nb = $("#nb"); nb.hidden = !n; nb.textContent = n; BELL.set(!!ME && !NAT() && ringFor().length > 0) /* APK में असली अलार्म सेवा बजाती है */ }
 /* ───── असली मोड (Firebase): मोबाइल + पिन से लॉगिन, मालिक की मंज़ूरी, टीम, APK की घंटी/लोकेशन ───── */
-const AERR = m => /EMAIL_EXISTS/.test(m) ? "यह नंबर पहले से है — लॉगिन करें" : /INVALID|NOT_FOUND|PASSWORD/.test(m) && !/WEAK/.test(m) ? "नंबर या पिन ग़लत है" : /WEAK/.test(m) ? "पिन कम से कम 6 अंक का रखें" : "नहीं हुआ — नेट देखें";
-function fsLogin() {
-  const b = sheet(`<h3>🔐 Marwar Rasoi — लॉगिन</h3><input class="in" id="fp" inputmode="numeric" maxlength="10" placeholder="मोबाइल नंबर (10 अंक)"><input class="in" id="fk" type="password" inputmode="numeric" placeholder="पिन (कम से कम 6 अंक)">
-  <input class="in" id="fn" placeholder="आपका नाम (सिर्फ़ नया खाता बनाते समय)"><button class="btn big" id="fin">लॉगिन</button><button class="btn gh big" id="fup" style="margin-top:6px">नया खाता बनाएँ</button>`);
+/* लॉगिन की ग़लती साफ़ हिंदी में + असली कोड (स्क्रीनशॉट से पता चले क्या अटका) */
+const AERR = m => { m = String(m || ""); const t = /OPERATION_NOT_ALLOWED|ADMIN_ONLY/.test(m) ? "Firebase में Email/Password लॉगिन चालू नहीं है — Authentication → Sign-in method → Email/Password → Enable → Save"
+  : /CONFIGURATION_NOT_FOUND/.test(m) ? "Firebase में Authentication शुरू नहीं हुई — Build → Authentication → Get started दबाएँ, फिर Email/Password चालू करें"
+  : /TOO_MANY/.test(m) ? "बहुत बार ग़लत कोशिश — 10 मिनट बाद फिर करें" : /WEAK/.test(m) ? "पिन कम से कम 6 अंक का रखें" : /API key|API_KEY|blocked|referer/i.test(m) ? "Firebase की चाबी (API key) रोक रही है"
+  : /Failed to fetch|NetworkError|Load failed/i.test(m) ? "इंटरनेट नहीं चल रहा — नेट देखकर फिर दबाएँ" : /PERMISSION|Missing or insufficient/i.test(m) ? "Firebase के नियम (Rules) रोक रहे हैं — नियम दोबारा चिपकाकर Publish करें" : "नहीं हुआ";
+  return t + " · कोड: " + m.slice(0, 70) };
+function fsLogin(msg) {
+  const b = sheet(`<div class="lg"><img src="icon.png" alt=""><h3>Marwar Rasoi</h3><p>अपना मोबाइल नंबर और पिन डालें।<br>पहली बार आए हैं तो यही आपका नया पिन बन जाएगा।</p></div>
+  <input class="in big" id="fp" inputmode="numeric" maxlength="10" autocomplete="username" placeholder="मोबाइल नंबर (10 अंक)" value="${E(LS.get("mr_ph", ""))}">
+  <input class="in big" id="fk" type="password" inputmode="numeric" autocomplete="current-password" placeholder="पिन (6 अंक या ज़्यादा)">
+  <div class="err" id="ferr">${msg ? E(msg) : ""}</div><button class="btn big" id="fgo">आगे बढ़ें ›</button>`);
   $(".scrim", b.parentNode).removeAttribute("data-x");
-  const go = async up => { const ph = $("#fp", b).value.replace(/\D/g, ""), pin = $("#fk", b).value, nm = $("#fn", b).value.trim();
-    if (ph.length !== 10) return toast("10 अंक का मोबाइल नंबर लिखें"); if (pin.length < 6) return toast("पिन कम से कम 6 अंक का"); if (up && !nm) return toast("नाम लिखें");
-    try { await (up ? AUTH.signUp(ph, pin) : AUTH.signIn(ph, pin)); if (nm) LS.set("mr_name", nm); closeSheet(); boot() } catch (e) { toast(AERR(e.message)) } };
-  $("#fin", b).onclick = () => go(false); $("#fup", b).onclick = () => go(true);
+  const er = t => $("#ferr", b).textContent = t;
+  $("#fgo", b).onclick = async () => { const ph = $("#fp", b).value.replace(/\D/g, ""), pin = $("#fk", b).value, bt = $("#fgo", b);
+    if (ph.length !== 10) return er("मोबाइल नंबर पूरे 10 अंक का लिखें"); if (pin.length < 6) return er("पिन कम से कम 6 अंक का रखें");
+    bt.disabled = true; bt.textContent = "⏳ रुकिए…"; er(""); LS.set("mr_ph", ph);
+    try { try { await AUTH.signIn(ph, pin) } catch (e) { if (!/INVALID|NOT_FOUND/.test(e.message)) throw e; /* खाता नहीं है या पिन ग़लत → नया खाता बनाकर देखें */
+        try { await AUTH.signUp(ph, pin) } catch (e2) { if (/EMAIL_EXISTS/.test(e2.message)) throw new Error("WRONGPIN"); throw e2 } }
+      closeSheet(); boot() }
+    catch (e) { bt.disabled = false; bt.textContent = "आगे बढ़ें ›"; er(e.message === "WRONGPIN" ? "इस नंबर का खाता पहले से बना है — पिन ग़लत है। सही पिन डालें (भूल गए हों तो विक्रम जी से कहें)।" : AERR(e.message)) } };
 }
+const askName = () => new Promise(res => { const b = sheet(`<h3>👋 आपका नाम</h3><input class="in big" id="nm" maxlength="30" placeholder="जैसे: स्वरूप सा"><div class="err" id="nme"></div><button class="btn big" id="nmo">सेव करें</button>`);
+  $(".scrim", b.parentNode).removeAttribute("data-x"); $("#nmo", b).onclick = () => { const n = $("#nm", b).value.trim(); if (n.length < 2) return $("#nme", b).textContent = "नाम लिखें"; LS.set("mr_name", n); closeSheet(); res(n) } });
 async function native() { const P = NAT(); if (!P || !AUTH.u || !ME) return;
   try { await P.ringStart({ rt: AUTH.u.rt, key: FB.apiKey, pid: FB.projectId, every: 15, open: -1, close: -1, loud: true, wait: ME.role === "owner" ? (CFG.ownerWait || 180) : 0, name: ME.name, ask: true }) } catch (e) { }
   try { if (ME.role !== "owner") await P.trackStart({ name: ME.name }) } catch (e) { } }
@@ -126,11 +139,11 @@ async function boot() {
   if (DB.mode === "local") { DB.start(); return draw() }
   if (!AUTH.u) return fsLogin();
   try { let st = await fsGet("staff", AUTH.u.uid);
-    if (!st) { const base = { name: LS.get("mr_name", "") || AUTH.u.ph, phone: AUTH.u.ph, ts: now() };
+    if (!st) { const base = { name: LS.get("mr_name", "") || await askName(), phone: AUTH.u.ph, ts: now() };
       try { await fsSet("staff", AUTH.u.uid, Object.assign({ role: "owner" }, base)); st = Object.assign({ role: "owner" }, base) } /* नियम सिर्फ़ मालिक के नंबर को यह करने देते हैं */
       catch (e) { await fsSet("staff", AUTH.u.uid, Object.assign({ role: "pending" }, base)); st = Object.assign({ role: "pending" }, base) } }
     ME = { name: st.name, role: st.role, uid: AUTH.u.uid }; LS.set("mr_me", ME)
-  } catch (e) { if (!AUTH.u) return fsLogin(); if (!ME) { $("#pg").innerHTML = `<div class="empty">📶 नेट नहीं है या लॉगिन पुराना हो गया<br><br><button class="btn" onclick="boot()">फिर कोशिश</button> <button class="btn gh" onclick="logout()">दोबारा लॉगिन</button></div>`; return } }
+  } catch (e) { if (!AUTH.u) return fsLogin("लॉगिन पुराना हो गया — दोबारा पिन डालें"); if (!ME) { $("#pg").innerHTML = `<div class="empty">⚠ खाता खुल नहीं पाया<br><b style="color:#b91c1c">${E(AERR(e.message))}</b><br><br><button class="btn" onclick="boot()">🔄 फिर कोशिश</button> <button class="btn gh" onclick="logout()">दोबारा लॉगिन</button></div>`; return } }
   if (!ROLES[ME.role]) { $("#me").textContent = "👤 " + ME.name; $("#pg").innerHTML = `<div class="empty">⏳ <b>${E(ME.name)}</b>, आपका खाता बन गया है।<br>${ME.role === "off" ? "यह खाता बंद है" : "मालिक की मंज़ूरी बाकी है"} — विक्रम जी से कहें कि ऐप के ☰ और → 👥 टीम में आपको मैनेजर/वेटर बनाएँ।<br><br><button class="btn" onclick="boot()">🔄 फिर देखें</button> <button class="btn gh" onclick="logout()">लॉगआउट</button></div>`; return }
   DB.start({ staff: true }); native(); draw();
 }
