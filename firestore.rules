@@ -46,6 +46,11 @@ service cloud.firestore {
     match /cust/{id} { allow read: if mgr(); allow create, update: if owner(); allow delete: if false; }
     // 💵 गल्ला: मालिक + मैनेजर लिखें/पढ़ें; कोई एंट्री बदले/मिटे नहीं
     match /galla/{id} { allow read, create: if mgr(); allow update, delete: if false; }
+    // 🧑‍🍳 टीम रजिस्टर: साथी मालिक जोड़े/बदले; तनख्वाह सिर्फ़ मालिक; हाज़िरी और दिया पैसा मालिक + मैनेजर (दिया पैसा बदले/मिटे नहीं)
+    match /emp/{id} { allow read: if mgr(); allow create, update: if owner(); allow delete: if false; }
+    match /empsal/{id} { allow read, create, update: if owner(); allow delete: if false; }
+    match /att/{id} { allow read, create, update: if mgr(); allow delete: if false; }
+    match /pay/{id} { allow read, create: if mgr(); allow update, delete: if false; }
     match /cnote/{id} { allow read, create, update: if mgr(); allow delete: if false; }
     // 🚚 177 MH कैंटीन का ऐप "रसोई को दिया" माल यहाँ लिखता है (बिना लॉगिन, सिर्फ़ नया बनाना); पढ़ना/मिलान सिर्फ़ टीम
     match /inbox/{id} {
