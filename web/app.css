@@ -112,3 +112,4 @@ body{font-family:Mukta,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font
 .bars{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;align-items:end;background:#fff;border-radius:16px;padding:10px 8px 6px;box-shadow:0 2px 8px rgba(60,30,5,.07)}.bars div{display:flex;flex-direction:column-reverse;align-items:center;gap:2px}.bars i{display:block;width:70%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#d97706,#7f1d1d)}.bars b{font:800 11.5px "Baloo 2",sans-serif;color:var(--m)}.bars small{font-size:10.5px;color:var(--mut);font-weight:700;text-align:center;line-height:1.15}
 /* ⚡ हल्का मेन्यू: टाइल में 200px की फोटो (menu/s/, scripts/thumbs.py) */
 .tabs button[hidden]{display:none}
+.me.upd{background:#f0c058;color:#5a1010;font-weight:800;animation:updp 1.2s infinite alternate}@keyframes updp{to{transform:scale(1.06)}}

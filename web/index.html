@@ -5,7 +5,7 @@
 <div class="pg" id="pg"></div>
 <button class="bar" id="bar" hidden></button>
 <div class="tabs" id="tabs"><button data-t="orders"><span>🔔</span>ऑर्डर<b id="nb" hidden></b></button><button data-t="tables"><span>🍽️</span>टेबल</button><button data-t="take"><span>➕</span>ऑर्डर लें</button><button data-t="store"><span>📦</span>स्टोर</button><button data-t="more"><span>☰</span>और</button></div>
-<script src="config.js"></script><script src="core.js"></script><script src="store.js"></script><script src="owner.js"></script><script src="cust.js"></script>
+<script>window.MR_BUILD="dev"</script><script src="watch.js"></script><script src="config.js"></script><script src="core.js"></script><script src="store.js"></script><script src="owner.js"></script><script src="cust.js"></script>
 <script>
 /* मारवाड़ रसोई — मैनेजर / वेटर / मालिक ऐप (चरण 1+2) — नियम: docs/मारवाड़-रसोई-ऐप-प्रॉम्प्ट.txt */
 let ME = LS.get("mr_me", null), TAB = "orders", ALL = [], SIL = {}, TAKE = { type: "table", table: 0, cart: {}, note: "" };
@@ -92,12 +92,12 @@ function vMore() {
   ${["owner", "manager"].includes(ME.role) ? `<button class="row" data-a="udhar">💰 उधारी — किस पर कितना बाकी, WhatsApp याद</button>` : ""}
   ${ME.role === "owner" ? `<button class="row" data-a="report">📊 रिपोर्ट — 7 दिन की बिक्री, सबसे ज़्यादा बिकी डिश, किसने कितना काम किया</button><button class="row" data-a="cust">👥 ग्राहक — VIP, वापस बुलाएँ, उधारी, WhatsApp</button><button class="row" data-a="map">🗺️ टीम कहाँ है — नक्शा और आज का रास्ता</button><button class="row" data-a="msg">📣 मैनेजर को संदेश भेजें (फोन पर अलार्म)</button><button class="row" data-a="code">🤖 Claude का कोड लगाएँ (उधारी / ग्राहक / सूची)</button>` : ""}
   <div class="h">🛠️ औज़ार</div><a class="row" href="qr.html" target="_blank">🖨️ टेबल के QR कार्ड छापें (${CFG.tables})</a><a class="row" href="t/?t=1" target="_blank">📱 ग्राहक का टेबल-पेज देखें (टेबल 1)</a>
-  ${ME.role === "manager" ? `<button class="row" data-a="cust">👥 ग्राहक — VIP, वापस बुलाएँ, यूनिट-वार, WhatsApp</button>` : ""}<button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button>${DB.mode === "fs" ? (ME.role === "owner" ? `<button class="row" data-a="team">👥 टीम — मैनेजर/वेटर जोड़ें, मंज़ूरी दें</button>` : "") + `<button class="row" data-a="logout">🚪 ${E(ME.name)} · ${ROLES[ME.role]} — लॉगआउट</button>` : `<button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
+  ${ME.role === "manager" ? `<button class="row" data-a="cust">👥 ग्राहक — VIP, वापस बुलाएँ, यूनिट-वार, WhatsApp</button>` : ""}<button class="row" data-a="upd" id="updrow">🔄 ऐप अपडेट जाँचें</button><button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button>${DB.mode === "fs" ? (ME.role === "owner" ? `<button class="row" data-a="team">👥 टीम — मैनेजर/वेटर जोड़ें, मंज़ूरी दें</button>` : "") + `<button class="row" data-a="logout">🚪 ${E(ME.name)} · ${ROLES[ME.role]} — लॉगआउट</button>` : `<button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
 }
 function onAct(e, after) {
   const a = e.target.closest("[data-a]"); if (!a) return false; const id = a.dataset.id, k = a.dataset.a;
   if (k === "sil") { pend().forEach(o => SIL[o.id] = 1); ring() }
-  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true; else if (k === "map") return mapSheet(), true; else if (k === "udhar") return udharSheet(), true; else if (k === "code") return codeSheet(), true; else if (k === "cust") return custSheet(), true; else if (k === "report") return reportSheet(), true;
+  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true; else if (k === "map") return mapSheet(), true; else if (k === "udhar") return udharSheet(), true; else if (k === "code") return codeSheet(), true; else if (k === "cust") return custSheet(), true; else if (k === "report") return reportSheet(), true; else if (k === "upd") return updCheck(true), true;
   else if (k === "msg") { const b = sheet(`<h3>📣 मैनेजर को संदेश</h3><textarea class="in" id="mt" rows="3" maxlength="190" placeholder="जैसे: शाम 7 बजे 20 लोगों की पार्टी है, तैयारी रखें"></textarea><button class="btn big" id="ms">भेजें — मैनेजर के फोन पर घंटी बजेगी</button>`); $("#ms", b).onclick = () => { const n = $("#mt", b).value.trim(); if (n.length < 3) return toast("संदेश लिखें"); DB.add({ kind: "call", call: "msg", type: "parcel", table: 0, by: ME.name, note: n }).then(() => { closeSheet(); toast("संदेश गया ✔"); TAB = "orders"; draw() }).catch(() => toast("नहीं गया — नेट देखें")) }; return true } else if (k === "logout") return logout(), true;
   else if (k === "acc") { const b = sheet(`<h3>✅ कितने मिनट में तैयार?</h3><div class="seg">${(CFG.prep || [15, 25, 35]).map(m => `<button data-m="${m}" style="flex:1">${m} मिनट</button>`).join("")}</div>`); b.onclick = x => { const m = x.target.closest("[data-m]"); if (m) { act(id, { status: "acc", eta: +m.dataset.m }); closeSheet(); (after || draw)() } }; return true }
   else if (k === "rej") { const b = sheet(`<h3>❌ मना करने का कारण</h3><div class="seg">${["डिश खत्म", "रसोई बंद", "बहुत भीड़", "ग्राहक ने रद्द किया"].map(r => `<button data-r="${r}">${r}</button>`).join("")}</div>`); b.onclick = x => { const r = x.target.closest("[data-r]"); if (r) { act(id, { status: "rej", why: r.dataset.r }); closeSheet(); (after || draw)() } }; return true }
@@ -154,7 +154,7 @@ async function boot() {
 }
 function draw() {
   if (!ME) return DB.mode === "local" ? login() : boot();
-  $("#me").textContent = "👤 " + ME.name; $("#demo").hidden = DB.mode !== "local";
+  $("#me").textContent = "👤 " + ME.name; $("#demo").hidden = DB.mode !== "local"; setTimeout(updShow, 0);
   const KIT = ME && ME.role === "kitchen"; if (KIT && ["orders", "tables", "take"].includes(TAB)) TAB = "store"; /* रसोइया: ऑर्डर नहीं (पक्का बिल TMBill से) — सिर्फ़ स्टोर */
   $$("#tabs button").forEach(b => { b.classList.toggle("on", b.dataset.t === TAB); b.hidden = KIT && ["orders", "tables", "take"].includes(b.dataset.t) });
   const pg = $("#pg"); pg.innerHTML = TAB === "orders" ? vOrders() : TAB === "tables" ? vTables() : TAB === "take" ? vTake() : TAB === "store" ? vStore() : vMore();
@@ -162,7 +162,13 @@ function draw() {
   bar(); ring();
 }
 $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (b) { TAB = b.dataset.t; draw(); scrollTo(0, 0) } };
-$("#me").onclick = () => DB.mode === "local" ? login() : (TAB = "more", draw()); $("#bar").onclick = review;
+/* 🔄 ऐप अपडेट (177 जैसा): version.json हर 5 मिनट/ऐप खुलने पर देखो; नया हो तो ऊपर नाम की जगह "🔄 अपडेट" — दबाते ही ताज़ा ऐप। ☰ और में भी बटन। */
+let UPD = "";
+async function updCheck(manual) { try { const v = (await (await fetch("version.json?t=" + now(), { cache: "no-store" })).json()).version; UPD = v && v !== window.MR_BUILD && window.MR_BUILD !== "dev" ? v : ""; if (manual) UPD ? updGo() : toast("✅ ऐप ताज़ा है · वर्ज़न " + window.MR_BUILD) } catch (e) { if (manual) toast("नेट नहीं — बाद में जाँचें") } updShow() }
+function updShow() { const m = $("#me"); if (!m || !ME) return; m.classList.toggle("upd", !!UPD); if (UPD) m.textContent = "🔄 अपडेट"; else m.textContent = "👤 " + ME.name; const r = $("#updrow"); if (r) r.innerHTML = UPD ? "🔄 <b>नया अपडेट आ गया — दबाकर ऐप अपडेट करें</b>" : "🔄 ऐप अपडेट जाँचें · वर्ज़न " + window.MR_BUILD }
+function updGo() { toast("🔄 अपडेट हो रहा है…"); setTimeout(() => location.replace(location.pathname + "?u=" + (UPD || now())), 300) }
+setInterval(updCheck, 300000); document.addEventListener("visibilitychange", () => !document.hidden && updCheck()); setTimeout(updCheck, 4000);
+$("#me").onclick = () => UPD ? updGo() : DB.mode === "local" ? login() : (TAB = "more", draw()); $("#bar").onclick = review;
 $("#pg").addEventListener("click", e => {
   const tb = e.target.closest("[data-tb]"), ty = e.target.closest("[data-ty]"), tn = e.target.closest("[data-tn]");
   if (tb) tableSheet(+tb.dataset.tb); else if (ty) { TAKE.type = ty.dataset.ty; draw() } else if (tn) { TAKE.table = +tn.dataset.tn; $$(".tsel button").forEach(x => x.classList.toggle("on", x === tn)) } else onAct(e);

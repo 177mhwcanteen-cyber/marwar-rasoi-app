@@ -72,6 +72,10 @@ async def main():
         # मैनेजर को नक्शा/कोड नहीं
         await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); ok(await s.locator('[data-a="map"]').count() == 0 and await s.locator('[data-a="code"]').count() == 0 and await s.locator('[data-a="udhar"]').count() == 1 and await s.locator('[data-a="cust"]').count() == 1, "मैनेजर: नक्शा/कोड नहीं; उधारी और ग्राहक हैं")
         await s.click('[data-a="cust"]'); await s.wait_for_selector("[data-co]"); ok(await s.locator("#cf").count() == 0 and await s.locator("[data-co]").count() >= 1, "मैनेजर ग्राहक देखे, फ़ाइल न चढ़ा सके"); await s.click('[data-co="9000000002"]'); h = await s.get_attribute('[data-cw="9000000002"]', "href"); ok("Good%20" in h and "Royal%20Customer" in h, "संदेश में Good morning/… + Royal Customer: " + h[:110]); await s.click("#sheet .sx")
+        # 🔄 ऐप अपडेट: वर्ज़न वही → "ताज़ा"; पुराना वर्ज़न → ऊपर "अपडेट" बटन, दबाने पर ?u= के साथ ताज़ा
+        ok(await s.evaluate("window.MR_BUILD") != "dev" and "वर्ज़न" in await s.inner_text("#updrow"), "बिल्ड का वर्ज़न लगा"); await s.evaluate("updCheck()"); await s.wait_for_timeout(400); ok("अपडेट" not in await s.inner_text("#me"), "ताज़ा ऐप पर अपडेट बटन नहीं")
+        await s.evaluate("window.MR_BUILD='2020'; updCheck()"); await s.wait_for_function("document.querySelector('#me').textContent.includes('अपडेट')"); ok("नया अपडेट" in await s.inner_text("#updrow"), "नया वर्ज़न → अपडेट बटन")
+        await s.click("#me", force=True); await s.wait_for_url("**/?u=*"); await s.wait_for_selector("#tabs"); await s.wait_for_timeout(700); ok("अपडेट" not in await s.inner_text("#me") and await s.evaluate("typeof MRW") == "object", "अपडेट के बाद ताज़ा ऐप + पहरेदार चालू"); await s.click('[data-t="more"]')
         # रसोइया: ऑर्डर/टेबल/ऑर्डर-लें नहीं — सिर्फ़ स्टोर और "और"
         await s.evaluate("ME={name:'रसोइया',role:'kitchen'};LS.set('mr_me',ME);TAB='orders';draw()"); ok(await s.locator('#tabs button:visible').count() == 2 and await s.locator('#tabs button.on').get_attribute("data-t") == "store", "रसोइया को ऑर्डर नहीं दिखते")
         # ग्राहक का टेबल-पेज: सिर्फ़ पानी/वेटर/बिल; तीनों लगातार चलें; मेन्यू PDF
