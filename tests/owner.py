@@ -76,6 +76,12 @@ async def main():
         ok(await s.evaluate("window.MR_BUILD") != "dev" and "वर्ज़न" in await s.inner_text("#updrow"), "बिल्ड का वर्ज़न लगा"); await s.evaluate("updCheck()"); await s.wait_for_timeout(400); ok("अपडेट" not in await s.inner_text("#me"), "ताज़ा ऐप पर अपडेट बटन नहीं")
         await s.evaluate("window.MR_BUILD='2020'; updCheck()"); await s.wait_for_function("document.querySelector('#me').textContent.includes('अपडेट')"); ok("नया अपडेट" in await s.inner_text("#updrow"), "नया वर्ज़न → अपडेट बटन")
         await s.click("#me", force=True); await s.wait_for_url("**/?u=*"); await s.wait_for_selector("#tabs"); await s.wait_for_timeout(700); ok("अपडेट" not in await s.inner_text("#me") and await s.evaluate("typeof MRW") == "object", "अपडेट के बाद ताज़ा ऐप + पहरेदार चालू"); await s.click('[data-t="more"]')
+        # 💵 गल्ला: आया/गया, किसने लिया, दिन बंद पर फ़र्क
+        await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);TAB='more';draw()"); await s.click('[data-a="galla"]'); await s.wait_for_selector('[data-g="in"]')
+        await s.click('[data-g="in"]'); await s.fill("#ga", "5000"); await s.click("#gsv"); await s.wait_for_function("document.querySelector('#gl').innerText.includes('₹5000')")
+        await s.click('[data-g="out"]'); await s.fill("#ga", "1200"); await s.click('[data-gc="1"]'); await s.click("#gsv"); ok("नाम लिखें" in await s.inner_text("#ge"), "बिना नाम पैसा नहीं निकलता"); await s.fill("#gw", "रमेश"); await s.click("#gsv"); await s.wait_for_function("document.querySelector('#gl').innerText.includes('₹3800')")
+        await s.click('[data-g="close"]'); await s.fill("#ga", "3500"); await s.click("#gsv"); ok("कारण लिखें" in await s.inner_text("#ge"), "फ़र्क पर कारण ज़रूरी"); await s.fill("#gn", "300 की पर्ची नहीं मिली"); await s.click("#gsv"); await s.wait_for_function("document.querySelector('#gl').innerText.includes('दिन बंद')")
+        t = await s.inner_text("#gl"); ok("फ़र्क" in t and "₹3500" in t and "रमेश" in t and "₹1200" in t and "किसने कितना लिया" in t, "गल्ला: " + t[:200].replace("\n", " ")); await s.screenshot(path=SH + "/rasoi-galla.png"); await s.click("#sheet .sx")
         # रसोइया: ऑर्डर/टेबल/ऑर्डर-लें नहीं — सिर्फ़ स्टोर और "और"
         await s.evaluate("ME={name:'रसोइया',role:'kitchen'};LS.set('mr_me',ME);TAB='orders';draw()"); ok(await s.locator('#tabs button:visible').count() == 2 and await s.locator('#tabs button.on').get_attribute("data-t") == "store", "रसोइया को ऑर्डर नहीं दिखते")
         # ग्राहक का टेबल-पेज: सिर्फ़ पानी/वेटर/बिल; तीनों लगातार चलें; मेन्यू PDF

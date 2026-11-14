@@ -44,6 +44,8 @@ service cloud.firestore {
     match /udhar/{id} { allow read, create, update: if request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager'])); allow delete: if false; }
     // 👥 ग्राहकों का डेटा (TMBill से) और मालिक की टिप्पणी — मालिक + मैनेजर पढ़ें/संदेश भेजें; फ़ाइल सिर्फ़ मालिक चढ़ाए
     match /cust/{id} { allow read: if mgr(); allow create, update: if owner(); allow delete: if false; }
+    // 💵 गल्ला: मालिक + मैनेजर लिखें/पढ़ें; कोई एंट्री बदले/मिटे नहीं
+    match /galla/{id} { allow read, create: if mgr(); allow update, delete: if false; }
     match /cnote/{id} { allow read, create, update: if mgr(); allow delete: if false; }
     // 🚚 177 MH कैंटीन का ऐप "रसोई को दिया" माल यहाँ लिखता है (बिना लॉगिन, सिर्फ़ नया बनाना); पढ़ना/मिलान सिर्फ़ टीम
     match /inbox/{id} {
