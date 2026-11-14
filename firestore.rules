@@ -6,6 +6,7 @@ service cloud.firestore {
     function owner() { return request.auth != null && request.auth.token.email in ['9509553600@marwar-rasoi.app']; }
     function role() { return get(/databases/$(db)/documents/staff/$(request.auth.uid)).data.role; }
     function staff() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager', 'waiter', 'kitchen'])); }
+    function mgr() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager'])); }
     function d() { return request.resource.data; }
     function istMin() { return math.floor(((request.time.toMillis() + 19800000) % 86400000) / 60000); }
 
@@ -16,7 +17,7 @@ service cloud.firestore {
       allow create: if staff() || (
         d().status == 'new' && d().by == 'customer' && d().kind in ['order', 'call'] && d().type in ['table', 'parcel', 'delivery']
         && d().keys().hasOnly(['kind', 'call', 'type', 'table', 'items', 'total', 'note', 'by', 'name', 'phone', 'addr', 'ts', 'status', 'log'])
-        && istMin() >= 480 && istMin() < 1350 // ग्राहक का ऑर्डर सिर्फ़ सुबह 8:00 से रात 10:30 (भारत का समय)
+        && (d().kind == 'call' || (istMin() >= 480 && istMin() < 1350)) // ग्राहक का ऑर्डर सिर्फ़ सुबह 8:00 से रात 10:30 (भारत का समय); पानी/वेटर/बिल की पुकार हर समय
         && d().ts is int && d().ts > request.time.toMillis() - 300000 && d().ts < request.time.toMillis() + 300000
         && (!('call' in d()) || d().call in ['water', 'waiter', 'bill'])
         && (!('items' in d()) || (d().items is list && d().items.size() <= 40))
@@ -41,9 +42,9 @@ service cloud.firestore {
     match /conf/{id} { allow read, create, update: if staff(); allow delete: if false; }
     // 💰 उधारी — सिर्फ़ मालिक और मैनेजर
     match /udhar/{id} { allow read, create, update: if request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager'])); allow delete: if false; }
-    // 👥 ग्राहकों का डेटा (TMBill से) और मालिक की टिप्पणी — सिर्फ़ मालिक
-    match /cust/{id} { allow read, create, update: if owner(); allow delete: if false; }
-    match /cnote/{id} { allow read, create, update: if owner(); allow delete: if false; }
+    // 👥 ग्राहकों का डेटा (TMBill से) और मालिक की टिप्पणी — मालिक + मैनेजर पढ़ें/संदेश भेजें; फ़ाइल सिर्फ़ मालिक चढ़ाए
+    match /cust/{id} { allow read: if mgr(); allow create, update: if owner(); allow delete: if false; }
+    match /cnote/{id} { allow read, create, update: if mgr(); allow delete: if false; }
     // 🚚 177 MH कैंटीन का ऐप "रसोई को दिया" माल यहाँ लिखता है (बिना लॉगिन, सिर्फ़ नया बनाना); पढ़ना/मिलान सिर्फ़ टीम
     match /inbox/{id} {
       allow read, update: if staff();

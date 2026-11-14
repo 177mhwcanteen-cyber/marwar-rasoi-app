@@ -58,7 +58,7 @@ async def main():
         await s.set_input_files("#cf", {"name": "bad.csv", "mimeType": "text/csv", "buffer": b"a,b\n1,2\n"}); await s.wait_for_timeout(300); ok("ग्राहक-फ़ाइल नहीं" in await s.inner_text("#cerr"), "ग़लत फ़ाइल रुकी")
         await s.set_input_files("#cf", {"name": "c.csv", "mimeType": "text/csv", "buffer": CSV.encode()}); await s.wait_for_selector("[data-co]"); t = await s.inner_text("#cl")
         ok("3\nग्राहक" in t and "₹14981" in t and "₹400" in t and "Test Gone" in t and await s.locator("[data-co]").count() == 1, "चढ़ी (दोहरा नंबर छूटा), 'वापस बुलाएँ' में सिर्फ़ पुराना: " + t[:260])
-        await s.click('[data-co="9000000002"]'); h = await s.get_attribute('[data-cw="9000000002"]', "href"); ok("wa.me/919000000002" in h and "Bahut%20din" in h and "Fish%20Curry" in h and "order%2F%3Fs%3Drasoi" in h, "वापस बुलाने का संदेश: " + h[:120])
+        await s.click('[data-co="9000000002"]'); h = await s.get_attribute('[data-cw="9000000002"]', "href"); ok("wa.me/919000000002" in h and "bahut%20din" in h and "Fish%20Curry" in h and "order%2F%3Fs%3Drasoi" in h, "वापस बुलाने का संदेश: " + h[:120])
         await s.fill("#cn", "74 के मेस वाले"); await s.click('[data-cs="9000000002"]'); await s.wait_for_timeout(300)
         await s.click('[data-cf="ud"]'); t = await s.inner_text("#cl"); ok("ग्राहक 0003" in t and "उधारी ₹400" in t and await s.locator("[data-co]").count() == 1, "उधारी वाले: " + t[:200])
         await s.fill("#cq", "kadai"); await s.wait_for_timeout(600); t = await s.inner_text("#cl"); ok("Test Vip" in t and await s.locator("[data-co]").count() == 1, "डिश से खोज")
@@ -70,7 +70,15 @@ async def main():
         ok(await s.locator(".bars > div").count() == 7, "7 दिन की पट्टियाँ"); await s.screenshot(path=SH + "/rasoi-report.png"); await s.click("#sheet .sx")
         await s.click('[data-t="take"]'); await s.click('[data-c="pop"]'); ok("Dal Tadka" in (await s.locator(".mc .nm").first.inner_text()).title() or "DAL" in (await s.locator(".mc .nm").first.inner_text()).upper(), "⭐ सबसे ऊपर दाल तड़का"); await s.click('[data-t="more"]')
         # मैनेजर को नक्शा/कोड नहीं
-        await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); ok(await s.locator('[data-a="map"]').count() == 0 and await s.locator('[data-a="code"]').count() == 0 and await s.locator('[data-a="udhar"]').count() == 1 and await s.locator('[data-a="cust"]').count() == 0, "मैनेजर: नक्शा/कोड/ग्राहक नहीं, उधारी है")
+        await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); ok(await s.locator('[data-a="map"]').count() == 0 and await s.locator('[data-a="code"]').count() == 0 and await s.locator('[data-a="udhar"]').count() == 1 and await s.locator('[data-a="cust"]').count() == 1, "मैनेजर: नक्शा/कोड नहीं; उधारी और ग्राहक हैं")
+        await s.click('[data-a="cust"]'); await s.wait_for_selector("[data-co]"); ok(await s.locator("#cf").count() == 0 and await s.locator("[data-co]").count() >= 1, "मैनेजर ग्राहक देखे, फ़ाइल न चढ़ा सके"); await s.click('[data-co="9000000002"]'); h = await s.get_attribute('[data-cw="9000000002"]', "href"); ok("Good%20" in h and "Royal%20Customer" in h, "संदेश में Good morning/… + Royal Customer: " + h[:110]); await s.click("#sheet .sx")
+        # रसोइया: ऑर्डर/टेबल/ऑर्डर-लें नहीं — सिर्फ़ स्टोर और "और"
+        await s.evaluate("ME={name:'रसोइया',role:'kitchen'};LS.set('mr_me',ME);TAB='orders';draw()"); ok(await s.locator('#tabs button:visible').count() == 2 and await s.locator('#tabs button.on').get_attribute("data-t") == "store", "रसोइया को ऑर्डर नहीं दिखते")
+        # ग्राहक का टेबल-पेज: सिर्फ़ पानी/वेटर/बिल; तीनों लगातार चलें; मेन्यू PDF
+        t = await cx.new_page(); t.on("pageerror", lambda e: errs.append(str(e))); await t.goto("http://127.0.0.1:8825/t/?t=1"); await t.wait_for_selector("[data-call]")
+        ok(await t.locator("[data-call]").count() == 3 and await t.locator('[data-call="store"]').count() == 0, "टेबल-पेज पर सिर्फ़ 3 बटन")
+        for k in ["water", "waiter", "bill"]: await t.click(f'[data-call="{k}"]'); await t.wait_for_selector(f'[data-call="{k}"].sent'); await t.wait_for_timeout(2700)
+        ok(await t.locator("[data-call].sent").count() == 3 and "marwar-rasoi-menu.pdf" in await t.get_attribute("#mpdf", "href"), "तीनों पुकार चलीं + Menu PDF"); await t.close()
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: मालिक के औज़ार पास")
 asyncio.run(main())

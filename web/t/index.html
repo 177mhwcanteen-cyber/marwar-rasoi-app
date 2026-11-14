@@ -5,7 +5,7 @@
 .hero.closed{background:#eef2ff;border-color:#c7d2fe}.hero.hurry{background:#fff1e6;border-color:#fdba74}.hero.first{background:#fffbe6;border-color:var(--g)}.hero.open{background:#ecfdf3;border-color:#86efac}</style></head><body>
 <div class="top"><img class="lgo" src="../icon.png" alt=""><div><h1>MARWAR RASOI</h1><small id="sub">Amenity Centre, Jalipa</small></div><span class="me" id="tno"></span></div>
 <div class="demo" id="demo" hidden>Demo mode — orders stay on this phone until the restaurant goes live</div>
-<div class="pg"><div class="calls" id="calls"></div><div id="hero"></div><div id="trk"></div><div class="h">🍽️ Menu <small>मेन्यू — tap ADD</small></div><div id="menu"></div></div>
+<div class="pg"><div class="calls" id="calls"></div><div id="hero"></div><div id="trk"></div><div class="h">🍽️ Menu <small>मेन्यू — tap ADD</small><a id="mpdf" href="https://177mhwcanteen-cyber.github.io/177-MH-/order/marwar-rasoi-menu.pdf" target="_blank" rel="noopener" download="Marwar-Rasoi-Menu.pdf" style="margin-left:auto;text-decoration:none;font:800 12.5px Mukta,sans-serif;color:#fff;background:var(--m,#7f1d1d);border-radius:20px;padding:5px 12px">📖 Menu PDF</a></div><div id="menu"></div></div>
 <button class="bar" id="bar" hidden></button>
 <script src="../config.js"></script><script src="../core.js" data-root="../"></script>
 <script>
@@ -17,25 +17,27 @@ const myIds = () => LS.get(MINE, []).filter(x => x.ts > now() - 8 * 3600e3).map(
 const mine = () => { const ids = myIds(); return ALL.filter(o => ids.includes(o.id)) };
 const remember = o => { const a = LS.get(MINE, []); a.push({ id: o.id, ts: o.ts }); LS.set(MINE, a.slice(-30)); ALL = DB.all(); DB.poll(); calls(); track() };
 $("#tno").textContent = T ? "Table " + T : "🛵 Home order";
+const TCALLS = ["water", "waiter", "bill"]; /* ग्राहक को सिर्फ़ ये तीन — स्टोर/संदेश टीम के हैं */
+const MENU_PDF = "https://177mhwcanteen-cyber.github.io/177-MH-/order/marwar-rasoi-menu.pdf";
 function calls() {
   const st = orderState(), ic = { closed: "🌙", hurry: "⏳", first: "🥇", open: "🔥" }[st.tone];
   $("#hero").innerHTML = `<div class="hero ${st.tone}">${ic} <span><b>${st.en}</b><small>${st.hi}</small>${!T && st.ok ? `<small class="fd">🛵 Free home delivery · No minimum order · Cash / UPI</small>` : ""}</span></div>`;
   if (!T) { $("#calls").hidden = true; return }
   const open = mine().filter(o => o.kind === "call" && o.status === "new");
-  $("#calls").innerHTML = Object.keys(CALLS).map(k => { const s = open.find(o => o.call === k); return `<button data-call="${k}" class="${s ? "sent" : ""}"><span>${CALLS[k].ic}</span>${s ? "Coming…" : CALLS[k].en}</button>` }).join("");
+  $("#calls").innerHTML = TCALLS.map(k => { const s = open.find(o => o.call === k); return `<button data-call="${k}" class="${s ? "sent" : ""}"><span>${CALLS[k].ic}</span>${s ? "Coming…" : CALLS[k].en}</button>` }).join("");
 }
 function track() {
   const L = mine().filter(o => o.kind !== "call" && o.status !== "done").sort((a, b) => b.ts - a.ts);
   $("#trk").innerHTML = L.map(o => { const i = FLOW.indexOf(o.status), rej = o.status === "rej", tb = o.type === "table";
     return `<div class="trk"><b>${rej ? "❌ Sorry, this order was cancelled" + (o.why ? " — " + E(o.why) : "") : o.status === "new" ? "🕐 Order sent — waiting for the kitchen" : o.status === "out" ? (tb ? "🍽️ Served — enjoy your meal!" : o.type === "parcel" ? "🥡 Ready — please collect" : "🛵 Out for delivery — reaching you soon") : (o.status === "cook" ? "👨‍🍳 Cooking" : "✅ Accepted") + (o.eta ? " · ready in ~" + Math.max(1, o.eta - mins(((o.log || []).find(l => l.s === "acc") || o).ts)) + " min" : "")}</b>
-    ${rej ? "" : `<div class="steps">${FLOW.slice(0, 4).map((s, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>`}<small>${(o.items || []).map(l => l.q + "× " + E(l.n)).join(", ")} · <b>${rs(o.total)}</b></small></div>` }).join("");
+    ${rej ? "" : `<div class="steps">${FLOW.slice(0, 4).map((s, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>`}<small>${(o.items || []).map(l => l.q + "× " + E(l.n)).join(", ")} · <b>${rs(o.total)}</b></small></div>` }).join("") + (T && L.filter(o => o.status !== "rej").length ? `<div class="trk" id="ttot"><b>🧾 Your table total so far: ${rs(L.filter(o => o.status !== "rej").reduce((t, o) => t + (+o.total || 0), 0))}</b><small>Final bill comes from the counter · tap “Bill please” when ready</small></div>` : "");
 }
 function bar() { const n = cartLines(cart).reduce((t, l) => t + l.q, 0), b = $("#bar"); b.hidden = !n; b.innerHTML = `<span>${n} item${n > 1 ? "s" : ""} · ${rs(cartTotal(cart))}</span><span>Place order ›</span>` }
 $("#calls").onclick = e => {
   const c = e.target.closest("[data-call]"); if (!c) return;
   const k = c.dataset.call; if (mine().some(o => o.kind === "call" && o.call === k && o.status === "new")) return toast("Already called — coming!");
-  if (now() - LS.get("mr_lastcall", 0) < 20000) return toast("Please wait a moment…"); LS.set("mr_lastcall", now());
-  DB.add({ kind: "call", call: k, type: "table", table: T, by: "customer" }).then(o => { remember(o); toast(CALLS[k].ic + " " + CALLS[k].en + " — coming to Table " + T) }).catch(() => toast("Could not send — check internet"));
+  if (now() - LS.get("mr_lastcall", 0) < 2500) return; LS.set("mr_lastcall", now()); /* सिर्फ़ दोहरी टैप रोकने को — हर बटन अलग से तुरंत चले */
+  DB.add({ kind: "call", call: k, type: "table", table: T, by: "customer" }).then(o => { remember(o); toast(CALLS[k].ic + " " + CALLS[k].en + " — coming to Table " + T) }).catch(() => { LS.set("mr_lastcall", 0); toast("Could not send — please try again or call the waiter") });
 };
 $("#bar").onclick = () => {
   const L = cartLines(cart), so = orderState(); if (!so.ok) return toast("Ordering opens at " + h12(CFG.orderFrom || "08:00"));

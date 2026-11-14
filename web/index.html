@@ -92,7 +92,7 @@ function vMore() {
   ${["owner", "manager"].includes(ME.role) ? `<button class="row" data-a="udhar">💰 उधारी — किस पर कितना बाकी, WhatsApp याद</button>` : ""}
   ${ME.role === "owner" ? `<button class="row" data-a="report">📊 रिपोर्ट — 7 दिन की बिक्री, सबसे ज़्यादा बिकी डिश, किसने कितना काम किया</button><button class="row" data-a="cust">👥 ग्राहक — VIP, वापस बुलाएँ, उधारी, WhatsApp</button><button class="row" data-a="map">🗺️ टीम कहाँ है — नक्शा और आज का रास्ता</button><button class="row" data-a="msg">📣 मैनेजर को संदेश भेजें (फोन पर अलार्म)</button><button class="row" data-a="code">🤖 Claude का कोड लगाएँ (उधारी / ग्राहक / सूची)</button>` : ""}
   <div class="h">🛠️ औज़ार</div><a class="row" href="qr.html" target="_blank">🖨️ टेबल के QR कार्ड छापें (${CFG.tables})</a><a class="row" href="t/?t=1" target="_blank">📱 ग्राहक का टेबल-पेज देखें (टेबल 1)</a>
-  <button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button>${DB.mode === "fs" ? (ME.role === "owner" ? `<button class="row" data-a="team">👥 टीम — मैनेजर/वेटर जोड़ें, मंज़ूरी दें</button>` : "") + `<button class="row" data-a="logout">🚪 ${E(ME.name)} · ${ROLES[ME.role]} — लॉगआउट</button>` : `<button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
+  ${ME.role === "manager" ? `<button class="row" data-a="cust">👥 ग्राहक — VIP, वापस बुलाएँ, यूनिट-वार, WhatsApp</button>` : ""}<button class="row" data-a="bell">🔔 घंटी की आवाज़ जाँचें</button>${DB.mode === "fs" ? (ME.role === "owner" ? `<button class="row" data-a="team">👥 टीम — मैनेजर/वेटर जोड़ें, मंज़ूरी दें</button>` : "") + `<button class="row" data-a="logout">🚪 ${E(ME.name)} · ${ROLES[ME.role]} — लॉगआउट</button>` : `<button class="row" data-a="login">👤 ${E(ME.name)} · ${ROLES[ME.role]} — बदलें</button>`}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
 }
 function onAct(e, after) {
   const a = e.target.closest("[data-a]"); if (!a) return false; const id = a.dataset.id, k = a.dataset.a;
@@ -105,7 +105,7 @@ function onAct(e, after) {
   else if (id) act(id, { status: k });
   after && after(); return true;
 }
-function ring() { const n = pend().length, nb = $("#nb"); nb.hidden = !n; nb.textContent = n; BELL.set(!!ME && !NAT() && ringFor().length > 0) /* APK में असली अलार्म सेवा बजाती है */ }
+function ring() { const n = pend().length, nb = $("#nb"); nb.hidden = !n; nb.textContent = n; BELL.set(!!ME && ME.role !== "kitchen" && !NAT() && ringFor().length > 0) /* APK में असली अलार्म सेवा बजाती है */ }
 /* ───── असली मोड (Firebase): मोबाइल + पिन से लॉगिन, मालिक की मंज़ूरी, टीम, APK की घंटी/लोकेशन ───── */
 /* लॉगिन की ग़लती साफ़ हिंदी में + असली कोड (स्क्रीनशॉट से पता चले क्या अटका) */
 const AERR = m => { m = String(m || ""); const t = /OPERATION_NOT_ALLOWED|ADMIN_ONLY/.test(m) ? "Firebase में Email/Password लॉगिन चालू नहीं है — Authentication → Sign-in method → Email/Password → Enable → Save"
@@ -131,17 +131,17 @@ function fsLogin(msg) {
 const askName = () => new Promise(res => { const b = sheet(`<h3>👋 आपका नाम</h3><input class="in big" id="nm" maxlength="30" placeholder="जैसे: स्वरूप सा"><div class="err" id="nme"></div><button class="btn big" id="nmo">सेव करें</button>`);
   $(".scrim", b.parentNode).removeAttribute("data-x"); $(".sx", b).remove(); $("#nmo", b).onclick = () => { const n = $("#nm", b).value.trim(); if (n.length < 2) return $("#nme", b).textContent = "नाम लिखें"; LS.set("mr_name", n); closeSheet(); res(n) } });
 async function native() { const P = NAT(); if (!P || !AUTH.u || !ME) return;
-  try { await P.ringStart({ rt: AUTH.u.rt, key: FB.apiKey, pid: FB.projectId, every: 15, open: -1, close: -1, loud: true, wait: ME.role === "owner" ? (CFG.ownerWait || 180) : 0, name: ME.name, ask: true }) } catch (e) { }
+  try { if (ME.role === "kitchen") { await P.ringStop() } else await P.ringStart({ rt: AUTH.u.rt, key: FB.apiKey, pid: FB.projectId, every: 15, open: -1, close: -1, loud: true, wait: ME.role === "owner" ? (CFG.ownerWait || 180) : 0, name: ME.name, ask: true }) } catch (e) { }
   try { if (ME.role !== "owner") await P.trackStart({ name: ME.name }) } catch (e) { } }
 function logout() { const P = NAT(); try { P && P.ringStop(); P && P.authClear() } catch (e) { } AUTH.out(); ME = null; LS.set("mr_me", null); closeSheet(); boot() }
 async function team() {
   const b = sheet(`<h3>👥 टीम</h3><div id="tl" class="empty">…</div>`); let L = [];
-  const show = () => $("#tl", b).outerHTML = `<div id="tl">${L.sort((a, c) => (a.role === "pending" ? 0 : 1) - (c.role === "pending" ? 0 : 1)).map(u => `<div class="row" style="flex-wrap:wrap"><span>${E(u.name)} · 📞 ${E(u.phone || "")}${u.role === "pending" ? " · <b style='color:#b91c1c'>मंज़ूरी बाकी</b>" : ""}</span><span class="seg" style="margin:0 0 0 auto">${u.role === "owner" ? "<b>मालिक</b>" : [["manager", "मैनेजर"], ["waiter", "वेटर"], ["kitchen", "रसोइया"], ["off", "बंद"]].map(([r, l]) => `<button data-u="${u.id}" data-r="${r}" class="${u.role === r ? "on" : ""}" style="padding:4px 8px;font-size:12.5px">${l}</button>`).join("")}</span></div>`).join("") || "<div class='empty'>अभी कोई नहीं जुड़ा — साथी ऐप खोलकर 'नया खाता बनाएँ' दबाएँ</div>"}</div>`;
+  const show = () => $("#tl", b).outerHTML = `<div id="tl">${L.sort((a, c) => (a.role === "pending" ? 0 : 1) - (c.role === "pending" ? 0 : 1)).map(u => `<div class="row" style="flex-wrap:wrap"><span>${E(u.name)} · <a href="tel:${E(u.phone || "")}">📞 ${E(u.phone || "")}</a> · <a href="https://wa.me/91${E(u.phone || "")}" target="_blank" rel="noopener">💬 WhatsApp</a>${u.role === "pending" ? " · <b style='color:#b91c1c'>मंज़ूरी बाकी</b>" : ""}</span><span class="seg" style="margin:0 0 0 auto">${u.role === "owner" ? "<b>मालिक</b>" : [["manager", "मैनेजर"], ["waiter", "वेटर"], ["kitchen", "रसोइया"], ["off", "बंद"]].map(([r, l]) => `<button data-u="${u.id}" data-r="${r}" class="${u.role === r ? "on" : ""}" style="padding:4px 8px;font-size:12.5px">${l}</button>`).join("")}</span></div>`).join("") || "<div class='empty'>अभी कोई नहीं जुड़ा — साथी ऐप खोलकर 'नया खाता बनाएँ' दबाएँ</div>"}</div>`;
   try { L = await fsQuery({ from: [{ collectionId: "staff" }], limit: 100 }); show() } catch (e) { $("#tl", b).textContent = "सूची नहीं खुली" }
   b.onclick = async e => { const x = e.target.closest("[data-u]"); if (!x) return; try { await fs("PATCH", `/staff/${x.dataset.u}?updateMask.fieldPaths=role`, { fields: encF({ role: x.dataset.r }) }); L.find(u => u.id === x.dataset.u).role = x.dataset.r; show(); toast("बदल दिया ✔") } catch (er) { toast("नहीं बदला") } };
 }
 async function boot() {
-  if (DB.mode === "local") { DB.start(); draw(); if (ME && ME.role === "owner") custLoad().then(draw).catch(() => { }); return ME && autoPacks() }
+  if (DB.mode === "local") { DB.start(); draw(); if (ME && (ME.role === "owner" || ME.role === "manager")) custLoad().then(draw).catch(() => { }); return ME && autoPacks() }
   if (!AUTH.u) return fsLogin();
   try { let st = await fsGet("staff", AUTH.u.uid);
     if (!st) { const base = { name: LS.get("mr_name", "") || await askName(), phone: AUTH.u.ph, ts: now() };
@@ -150,12 +150,13 @@ async function boot() {
     ME = { name: st.name, role: st.role, uid: AUTH.u.uid }; LS.set("mr_me", ME)
   } catch (e) { if (!AUTH.u) return fsLogin("लॉगिन पुराना हो गया — दोबारा पिन डालें"); if (!ME) { $("#pg").innerHTML = `<div class="empty">⚠ खाता खुल नहीं पाया<br><b style="color:#b91c1c">${E(AERR(e.message))}</b><br><br><button class="btn" onclick="boot()">🔄 फिर कोशिश</button> <button class="btn gh" onclick="logout()">दोबारा लॉगिन</button></div>`; return } }
   if (!ROLES[ME.role]) { $("#me").textContent = "👤 " + ME.name; $("#pg").innerHTML = `<div class="empty">⏳ <b>${E(ME.name)}</b>, आपका खाता बन गया है।<br>${ME.role === "off" ? "यह खाता बंद है" : "मालिक की मंज़ूरी बाकी है"} — विक्रम जी से कहें कि ऐप के ☰ और → 👥 टीम में आपको मैनेजर/वेटर बनाएँ।<br><br><button class="btn" onclick="boot()">🔄 फिर देखें</button> <button class="btn gh" onclick="logout()">लॉगआउट</button></div>`; return }
-  DB.start({ staff: true }); native(); draw(); autoPacks(); if (ME.role === "owner") custLoad().then(draw).catch(() => { });
+  DB.start({ staff: true }); native(); draw(); autoPacks(); if (ME.role === "owner" || ME.role === "manager") custLoad().then(draw).catch(() => { });
 }
 function draw() {
   if (!ME) return DB.mode === "local" ? login() : boot();
   $("#me").textContent = "👤 " + ME.name; $("#demo").hidden = DB.mode !== "local";
-  $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === TAB));
+  const KIT = ME && ME.role === "kitchen"; if (KIT && ["orders", "tables", "take"].includes(TAB)) TAB = "store"; /* रसोइया: ऑर्डर नहीं (पक्का बिल TMBill से) — सिर्फ़ स्टोर */
+  $$("#tabs button").forEach(b => { b.classList.toggle("on", b.dataset.t === TAB); b.hidden = KIT && ["orders", "tables", "take"].includes(b.dataset.t) });
   const pg = $("#pg"); pg.innerHTML = TAB === "orders" ? vOrders() : TAB === "tables" ? vTables() : TAB === "take" ? vTake() : TAB === "store" ? vStore() : vMore();
   if (TAB === "take") menuUI($("#menu"), TAKE.cart, bar, { pop: popCount });
   bar(); ring();
