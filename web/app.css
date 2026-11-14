@@ -113,3 +113,8 @@ body{font-family:Mukta,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font
 /* ⚡ हल्का मेन्यू: टाइल में 200px की फोटो (menu/s/, scripts/thumbs.py) */
 .tabs button[hidden]{display:none}
 .me.upd{background:#f0c058;color:#5a1010;font-weight:800;animation:updp 1.2s infinite alternate}@keyframes updp{to{transform:scale(1.06)}}
+/* 📦 स्टोर चरण 2: फोटो-टाइल (177 जैसी), श्रेणी-चिप */
+.stiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0;max-height:46vh;overflow:auto}.stiles button{display:flex;flex-direction:column;align-items:stretch;gap:2px;background:#fff;border:0;border-radius:12px;padding:5px;box-shadow:0 1px 4px rgba(60,30,5,.1);text-align:left;font:inherit}
+.stiles button img,.stiles button>i{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;background:#f6ead8;display:grid;place-items:center;font-size:34px;font-style:normal}.stiles button span{font-size:11.5px;font-weight:700;line-height:1.15;max-height:2.3em;overflow:hidden}.stiles button b{font-size:11px;color:var(--mut)}
+.sth{flex:none;width:34px;height:34px;border-radius:8px;overflow:hidden;background:#f6ead8;display:grid;place-items:center;font-style:normal}.sth img{width:100%;height:100%;object-fit:cover}.sth i{font-style:normal;font-size:19px}
+#scat{flex-wrap:nowrap;overflow-x:auto;margin:2px 0}#scat button{flex:none}
