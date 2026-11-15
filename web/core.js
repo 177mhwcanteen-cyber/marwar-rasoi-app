@@ -17,7 +17,7 @@ const ST = {
   new: { hi: "नया", en: "Placed", c: "#b91c1c" }, acc: { hi: "स्वीकार", en: "Accepted", c: "#b45309" }, cook: { hi: "बन रहा है", en: "Cooking", c: "#a16207" },
   out: { hi: "परोसा / निकला", en: "Served", c: "#15803d" }, done: { hi: "पूरा", en: "Completed", c: "#475569" }, rej: { hi: "मना", en: "Cancelled", c: "#64748b" }
 };
-const CALLS = { water: { ic: "💧", hi: "पानी", en: "Water" }, waiter: { ic: "🙋", hi: "वेटर बुलाया", en: "Call waiter" }, bill: { ic: "🧾", hi: "बिल माँगा", en: "Bill please" }, store: { ic: "📦", hi: "रसोई ने सामान माँगा", en: "Store request" }, msg: { ic: "📣", hi: "मालिक का संदेश", en: "Message" } };
+const CALLS = { water: { ic: "💧", hi: "पानी", en: "Water" }, waiter: { ic: "🙋", hi: "वेटर बुलाया", en: "Call waiter" }, bill: { ic: "🧾", hi: "बिल माँगा", en: "Bill please" }, store: { ic: "📦", hi: "रसोई ने सामान माँगा", en: "Store request" }, msg: { ic: "📣", hi: "डायरेक्टर का संदेश", en: "Message" }, stin: { ic: "📥", hi: "वाइस शेफ ने माल चढ़ाया", en: "Stock added" } };
 const where = o => o.type === "table" ? "🍽️ टेबल " + o.table : o.type === "parcel" ? "🥡 पार्सल" : "🛵 डिलीवरी";
 
 /* ───────── Firestore (REST, बिना SDK — हल्का) + लॉगिन (मोबाइल नंबर + पिन → Firebase Email/Password) ───────── */

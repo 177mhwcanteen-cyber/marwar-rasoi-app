@@ -9,7 +9,7 @@
 <script>
 /* मारवाड़ रसोई — मैनेजर / वेटर / मालिक ऐप (चरण 1+2) — नियम: docs/मारवाड़-रसोई-ऐप-प्रॉम्प्ट.txt */
 let ME = LS.get("mr_me", null), TAB = "orders", ALL = [], SIL = {}, TAKE = { type: "table", table: 0, cart: {}, note: "" };
-const ROLES = { owner: "मालिक", manager: "मैनेजर", waiter: "वेटर", kitchen: "रसोइया" };
+const ROLES = { owner: "डायरेक्टर", manager: "मैनेजर", waiter: "वेटर", kitchen: "वाइस शेफ" };
 const WAIT = (CFG.ownerWait || 180) * 1000;
 const isLate = o => o.status === "new" && now() - o.ts > WAIT;
 const todays = () => ALL.filter(o => o.ts >= today0());
@@ -28,12 +28,12 @@ function login() {
 const act = (id, p) => DB.upd(id, p, ME.name).catch(e => toast("सेव नहीं हुआ — नेट देखें"));
 const card = o => {
   const s = ST[o.status], late = isLate(o), isCall = o.kind === "call";
-  const btn = isCall ? (o.status === "new" ? `<button class="btn ok" data-a="done" data-id="${o.id}">${o.call === "msg" ? "✔ पढ़ लिया" : o.call === "store" ? "✔ देख लिया" : "✔ जा रहे हैं"}</button>` : "")
+  const btn = isCall ? (o.status === "new" ? `<button class="btn ok" data-a="done" data-id="${o.id}">${o.call === "msg" ? "✔ पढ़ लिया" : ["store", "stin"].includes(o.call) ? "✔ देख लिया" : "✔ जा रहे हैं"}</button>` : "")
     : o.status === "new" ? `<button class="btn gh sm" data-a="rej" data-id="${o.id}">❌ मना</button><button class="btn ok" data-a="acc" data-id="${o.id}">✅ स्वीकार</button>`
     : o.status === "acc" ? `<button class="btn" data-a="cook" data-id="${o.id}">👨‍🍳 बनाना शुरू</button>`
     : o.status === "cook" ? `<button class="btn ok" data-a="out" data-id="${o.id}">${o.type === "table" ? "🍽️ परोस दिया" : o.type === "parcel" ? "🥡 दे दिया" : "🛵 निकल गया"}</button>`
     : o.status === "out" ? `<button class="btn" data-a="done" data-id="${o.id}">✔ पूरा + TMBill नं.</button>` : "";
-  return `<div class="oc ${late ? "late" : ""}" style="--sc:${s.c}"><div class="r1"><span class="w">${isCall ? (["store", "msg"].includes(o.call) ? CALLS[o.call].ic + " " + CALLS[o.call].hi : CALLS[o.call].ic + " " + where(o).replace("🍽️ ", "") + " — " + CALLS[o.call].hi) : where(o)}</span><span class="pill">${s.hi}</span><span class="t">${hm(o.ts)} · ${mins(o.ts)} मि.</span></div>
+  return `<div class="oc ${late ? "late" : ""}" style="--sc:${s.c}"><div class="r1"><span class="w">${isCall ? (["store", "msg", "stin"].includes(o.call) ? CALLS[o.call].ic + " " + CALLS[o.call].hi : CALLS[o.call].ic + " " + where(o).replace("🍽️ ", "") + " — " + CALLS[o.call].hi) : where(o)}</span><span class="pill">${s.hi}</span><span class="t">${hm(o.ts)} · ${mins(o.ts)} मि.</span></div>
   ${late ? `<div class="esc">⏱ ${Math.round(WAIT / 60000)} मिनट से ज़्यादा — मालिक को घंटी</div>` : ""}
   ${isCall ? (o.note ? `<div class="kot"><div class="nt" style="color:var(--ink)">${E(o.note)}</div></div><div class="who">✍️ ${E(o.by || "")}</div>` : "") : `${custTag(o.phone)}<div class="who">${o.by === "customer" ? "📱 ग्राहक ने खुद (QR)" : "✍️ " + E(o.by || "")}${o.name ? " · " + E(o.name) : ""}${o.phone ? " · 📞 " + E(o.phone) : ""}${o.addr ? " · 📍 " + E(o.addr) : ""}${o.eta && o.status !== "done" ? " · ⏳ ~" + o.eta + " मि." : ""}${o.tm ? " · 🧾 TMBill " + E(o.tm) : ""}</div>
   <div class="kot">${(o.items || []).map(l => `<div><b>${l.q}×</b>${vmark(l.veg)}${E(title(l.n))}<span>${rs(l.q * l.s)}</span></div>`).join("")}${o.note ? `<div class="nt">📝 ${E(o.note)}</div>` : ""}</div>`}

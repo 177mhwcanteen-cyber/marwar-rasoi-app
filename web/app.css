@@ -118,3 +118,11 @@ body{font-family:Mukta,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font
 .stiles button img,.stiles button>i{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px;background:#f6ead8;display:grid;place-items:center;font-size:34px;font-style:normal}.stiles button span{font-size:11.5px;font-weight:700;line-height:1.15;max-height:2.3em;overflow:hidden}.stiles button b{font-size:11px;color:var(--mut)}
 .sth{flex:none;width:34px;height:34px;border-radius:8px;overflow:hidden;background:#f6ead8;display:grid;place-items:center;font-style:normal}.sth img{width:100%;height:100%;object-fit:cover}.sth i{font-style:normal;font-size:19px}
 #scat{flex-wrap:nowrap;overflow-x:auto;margin:2px 0}#scat button{flex:none}
+
+/* 15-11 चरण A: स्टोर 177 जैसा */
+.srcs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}.srcs button{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:6px 2px;font:800 11.5px "Baloo 2",Mukta,sans-serif;display:grid;justify-items:center;gap:0;line-height:1.15}.srcs button i{font-size:22px;font-style:normal}.srcs button.on{background:linear-gradient(135deg,#7a1c1c,#a32a2a);color:#fff;border-color:transparent}
+#sloc{align-items:center;margin:6px 0}#sloc b{font-size:12.5px;white-space:nowrap}#sloc button.on{background:#15803d;color:#fff}
+.stiles.stk{max-height:none}.stiles.stk button.neg b{color:#b91c1c}.stiles button b{font-weight:800;color:#15803d}
+.sline.chg{box-shadow:0 0 0 1.5px #dc2626}.sline small.pk{display:flex;align-items:center;gap:3px;margin-top:2px}.sline small.pk input{width:44px;height:26px;font-size:13px}.sline small.pk select{height:26px;border-radius:6px;border:1px solid var(--line);font:inherit;font-size:11.5px}
+.scan i{top:36%;height:20%;border-color:#fff}.scan i u{position:absolute;left:3%;right:3%;top:50%;height:2px;background:#ef4444;box-shadow:0 0 8px #ef4444}.scan p{position:absolute;top:26%;margin:0;background:rgba(0,0,0,.6);color:#fff;font-weight:700;font-size:13px;padding:5px 10px;border-radius:10px}
+.scan .sbt{position:absolute;bottom:40px;display:flex;gap:8px}.scan .sbt button{border:0;border-radius:12px;background:rgba(20,20,20,.85);color:#fff;font:800 15px "Baloo 2",Mukta,sans-serif;padding:10px 14px}.scan .sbt button.on{background:#f59e0b}
