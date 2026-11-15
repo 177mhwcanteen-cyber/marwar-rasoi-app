@@ -9,6 +9,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
+import android.location.Location;
+import android.location.LocationManager;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -27,7 +29,9 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -46,6 +50,10 @@ public class OrderRingService extends Service {
     static final int NID_ALARM = 4612;
     static final String A_SILENCE = "in.marwar.rasoi.RING_SILENCE";
     static final String A_TEST = "in.marwar.rasoi.RING_TEST";
+    static final String A_RDONE = "in.marwar.rasoi.REM_DONE";
+    static final String A_RSNZ = "in.marwar.rasoi.REM_SNOOZE";
+    static final String CH_REM = "mr_remind_v1";
+    static final int NID_REM = 4620;
 
     static volatile boolean running = false;
     static volatile boolean ringing = false;
@@ -64,6 +72,14 @@ public class OrderRingService extends Service {
     private long ringStart = 0, ringEnd = 0;
     private final Set<String> silenced = new HashSet<>();
     private List<String[]> cur = new ArrayList<>();
+    // ⏰ रिमाइंडर (15-11-2026, विक्रम जी): conf/remind से — किसके लिए (पद), किस समय, कौन-सी घंटी, "रसोई पर हो तभी"
+    private JSONArray rList = null;
+    private double rLat = 0, rLng = 0;
+    private long rFetch = 0;
+    private MediaPlayer rmp;
+    private String testTone = null;
+    private final Map<String, Long> rOpen = new HashMap<>(); // बजे पर जवाब नहीं — 15 मिनट बाद "छूटा"
+    private final Map<String, String[]> rInfo = new HashMap<>();
 
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences(PREF, Context.MODE_PRIVATE); }
 
@@ -95,6 +111,12 @@ public class OrderRingService extends Service {
         NotificationChannel w = new NotificationChannel(CH_WATCH, "ऑर्डर की घंटी चालू", NotificationManager.IMPORTANCE_MIN);
         w.setShowBadge(false);
         nm.createNotificationChannel(w);
+        NotificationChannel r = new NotificationChannel(CH_REM, "⏰ रिमाइंडर (अलार्म)", NotificationManager.IMPORTANCE_HIGH);
+        r.setSound(null, null);
+        r.enableVibration(false);
+        r.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        r.setBypassDnd(true);
+        nm.createNotificationChannel(r);
         NotificationChannel a = new NotificationChannel(CH_ALARM, "🔔 नया ऑर्डर (अलार्म)", NotificationManager.IMPORTANCE_HIGH);
         a.setSound(null, null); // आवाज़ हम खुद अलार्म की तरह बजाते हैं
         a.enableVibration(false);
@@ -139,7 +161,12 @@ public class OrderRingService extends Service {
         if (A_SILENCE.equals(a)) {
             h.post(new Runnable() { public void run() { silenceAll(); } });
         } else if (A_TEST.equals(a)) {
+            testTone = intent.getStringExtra("tone");
             h.post(new Runnable() { public void run() { test(); } });
+        } else if (A_RDONE.equals(a) || A_RSNZ.equals(a)) {
+            final String key = intent.getStringExtra("key");
+            final boolean done = A_RDONE.equals(a);
+            h.post(new Runnable() { public void run() { remAct(key, done ? "done" : "snooze"); } });
         }
         if (!running) {
             running = true;
@@ -154,7 +181,8 @@ public class OrderRingService extends Service {
     private final Runnable loop = new Runnable() {
         public void run() {
             if (!running) return;
-            try { poll(); } catch (Exception e) { lastErr = String.valueOf(e.getMessage()); }
+            try { if (prefs(OrderRingService.this).getBoolean("orders", true)) poll(); } catch (Exception e) { lastErr = String.valueOf(e.getMessage()); }
+            try { remind(); } catch (Exception ignore) { }
             h.postDelayed(this, every() * 1000L);
         }
     };
@@ -281,9 +309,185 @@ public class OrderRingService extends Service {
         try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NID_ALARM); } catch (Exception ignore) { }
     }
 
+    /* ───────── ⏰ रिमाइंडर ───────── */
+    private static Object dec(JSONObject v) {
+        if (v == null) return null;
+        if (v.has("stringValue")) return v.optString("stringValue", "");
+        if (v.has("integerValue")) return Double.parseDouble(v.optString("integerValue", "0"));
+        if (v.has("doubleValue")) return v.optDouble("doubleValue", 0);
+        if (v.has("booleanValue")) return v.optBoolean("booleanValue", false);
+        if (v.has("arrayValue")) {
+            JSONArray out = new JSONArray(), a = v.optJSONObject("arrayValue").optJSONArray("values");
+            if (a != null) for (int i = 0; i < a.length(); i++) out.put(dec(a.optJSONObject(i)));
+            return out;
+        }
+        if (v.has("mapValue")) {
+            JSONObject out = new JSONObject(), f = v.optJSONObject("mapValue").optJSONObject("fields");
+            if (f != null) { JSONArray n = f.names(); if (n != null) for (int i = 0; i < n.length(); i++) { try { out.put(n.optString(i), dec(f.optJSONObject(n.optString(i)))); } catch (Exception ignore) { } } }
+            return out;
+        }
+        return null;
+    }
+
+    private void remFetch() throws Exception {
+        String q = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"conf\"}],\"limit\":20}}";
+        JSONArray arr = new JSONArray(Fs.runQuery(this, q));
+        rFetch = System.currentTimeMillis();
+        try { // पुराने दिनों की निशानियाँ साफ़
+            Calendar k = Calendar.getInstance();
+            String day = k.get(Calendar.YEAR) + "-" + (k.get(Calendar.MONTH) + 1) + "-" + k.get(Calendar.DAY_OF_MONTH) + "|";
+            SharedPreferences.Editor ed = rp(this).edit();
+            for (String key : rp(this).getAll().keySet()) if (!key.startsWith("z|") && !key.startsWith(day)) ed.remove(key);
+            ed.apply();
+        } catch (Exception ignore) { }
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject d = arr.getJSONObject(i).optJSONObject("document");
+            if (d == null || !d.optString("name", "").endsWith("/remind")) continue;
+            JSONObject f = d.optJSONObject("fields");
+            if (f == null) continue;
+            Object l = dec(f.optJSONObject("list"));
+            rList = l instanceof JSONArray ? (JSONArray) l : new JSONArray();
+            Object la = dec(f.optJSONObject("lat")), ln = dec(f.optJSONObject("lng"));
+            rLat = la instanceof Double ? (Double) la : 0;
+            rLng = ln instanceof Double ? (Double) ln : 0;
+            return;
+        }
+        rList = new JSONArray();
+    }
+
+    /** रसोई के 200 मीटर के अंदर? (जगह तय न हो या लोकेशन न मिले तो हाँ) */
+    private boolean near() {
+        if (rLat == 0 && rLng == 0) return true;
+        try {
+            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            Location best = null;
+            for (String pr : lm.getProviders(true)) {
+                Location l = lm.getLastKnownLocation(pr);
+                if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+            }
+            if (best == null || System.currentTimeMillis() - best.getTime() > 30 * 60000L) return false;
+            float[] d = new float[1];
+            Location.distanceBetween(best.getLatitude(), best.getLongitude(), rLat, rLng, d);
+            return d[0] < 200 + Math.min(150, best.getAccuracy());
+        } catch (Exception e) { return true; }
+    }
+
+    private static SharedPreferences rp(Context c) { return c.getSharedPreferences("mr_rem", Context.MODE_PRIVATE); }
+
+    private void remind() throws Exception {
+        if (!Fs.ready(this)) return;
+        long now = System.currentTimeMillis();
+        if (rList == null || now - rFetch > 5 * 60000L) remFetch();
+        String role = prefs(this).getString("role", "");
+        Calendar k = Calendar.getInstance();
+        int m = k.get(Calendar.HOUR_OF_DAY) * 60 + k.get(Calendar.MINUTE);
+        String day = k.get(Calendar.YEAR) + "-" + (k.get(Calendar.MONTH) + 1) + "-" + k.get(Calendar.DAY_OF_MONTH);
+        SharedPreferences r = rp(this);
+        // जवाब नहीं आया → 15 मिनट बाद "छूटा" (डायरेक्टर को दिखेगा)
+        for (String key : new ArrayList<>(rOpen.keySet())) if (now - rOpen.get(key) > 15 * 60000L) remAct(key, "miss");
+        // ⏰ 10 मिनट बाद वाले
+        for (Map.Entry<String, ?> e : r.getAll().entrySet()) {
+            if (!e.getKey().startsWith("z|")) continue;
+            long t = 0; try { t = (Long) e.getValue(); } catch (Exception ignore) { }
+            String key = e.getKey().substring(2);
+            if (t > 0 && now >= t && rInfo.containsKey(key)) { r.edit().remove(e.getKey()).apply(); fire(key); return; }
+            if (t > 0 && now - t > 6 * 3600000L) r.edit().remove(e.getKey()).apply();
+        }
+        if (!rOpen.isEmpty()) return; // एक बार में एक ही
+        for (int i = 0; rList != null && i < rList.length(); i++) {
+            JSONObject x = rList.optJSONObject(i);
+            if (x == null || !x.optBoolean("on", true)) continue;
+            String who = x.optString("who", "all");
+            if (!who.equals("all") && !who.equals(role)) continue;
+            JSONArray at = x.optJSONArray("at");
+            boolean here = x.optBoolean("here", false);
+            for (int j = 0; at != null && j < at.length(); j++) {
+                String hm = at.optString(j, "");
+                if (!hm.matches("\\d{1,2}:\\d{2}")) continue;
+                int am = Integer.parseInt(hm.split(":")[0]) * 60 + Integer.parseInt(hm.split(":")[1]);
+                String key = day + "|" + x.optString("id", "r" + i) + "|" + hm;
+                if (r.contains(key)) continue;
+                if (m < am || m > am + (here ? 240 : 20)) continue;
+                if (here && !near()) continue;
+                rInfo.put(key, new String[]{x.optString("id", ""), x.optString("t", "रिमाइंडर"), x.optString("tone", "t11"), hm});
+                r.edit().putLong(key, now).apply();
+                fire(key);
+                return;
+            }
+        }
+    }
+
+    private void fire(String key) {
+        String[] x = rInfo.get(key);
+        if (x == null) return;
+        rOpen.put(key, System.currentTimeMillis());
+        int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+        PendingIntent dn = PendingIntent.getService(this, 21, new Intent(this, OrderRingService.class).setAction(A_RDONE).putExtra("key", key), fl);
+        PendingIntent sz = PendingIntent.getService(this, 22, new Intent(this, OrderRingService.class).setAction(A_RSNZ).putExtra("key", key), fl);
+        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_REM) : new Notification.Builder(this);
+        b.setContentTitle("⏰ " + x[1])
+                .setContentText("मारवाड़ रसोई · " + x[3] + " — काम देखकर \"✅ हो गया\" दबाएँ")
+                .setStyle(new Notification.BigTextStyle().bigText(x[1] + "\n\nमारवाड़ रसोई · " + x[3] + " — देखकर \"✅ हो गया\" दबाएँ (डायरेक्टर को दिखता है)"))
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setPriority(Notification.PRIORITY_MAX)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setOngoing(true)
+                .setContentIntent(openApp(5, false))
+                .setFullScreenIntent(openApp(6, false), true)
+                .addAction(new Notification.Action.Builder((android.graphics.drawable.Icon) null, "✅ हो गया", dn).build())
+                .addAction(new Notification.Action.Builder((android.graphics.drawable.Icon) null, "⏰ 10 मिनट बाद", sz).build());
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM, b.build()); } catch (Exception ignore) { }
+        remSound(x[2]);
+    }
+
+    private synchronized void remSound(String t) {
+        remStop();
+        try {
+            int id = getResources().getIdentifier("order_" + t, "raw", getPackageName());
+            Uri u = id != 0 ? Uri.parse("android.resource://" + getPackageName() + "/" + id) : tone();
+            rmp = new MediaPlayer();
+            rmp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            rmp.setDataSource(this, u);
+            rmp.setLooping(true);
+            rmp.prepare();
+            rmp.start();
+            if (vib != null) {
+                long[] pat = new long[]{0, 500, 300, 500, 1500};
+                if (Build.VERSION.SDK_INT >= 26) vib.vibrate(VibrationEffect.createWaveform(pat, -1)); else vib.vibrate(pat, -1);
+            }
+        } catch (Exception e) { rmp = null; }
+        h.postDelayed(new Runnable() { public void run() { remStop(); } }, 40000);
+    }
+
+    private synchronized void remStop() {
+        try { if (rmp != null) { rmp.stop(); rmp.release(); } } catch (Exception ignore) { }
+        rmp = null;
+    }
+
+    /** ✅ हो गया / ⏰ बाद में / छूटा → rlog (डायरेक्टर देखे) */
+    private void remAct(String key, String act) {
+        if (key == null) return;
+        String[] x = rInfo.get(key);
+        rOpen.remove(key);
+        remStop();
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NID_REM); } catch (Exception ignore) { }
+        if ("snooze".equals(act)) rp(this).edit().putLong("z|" + key, System.currentTimeMillis() + 10 * 60000L).apply();
+        if (x == null) return;
+        try {
+            JSONObject f = new JSONObject()
+                    .put("rid", Fs.str(x[0])).put("t", Fs.str(x[1])).put("at", Fs.str(x[3])).put("act", Fs.str(act))
+                    .put("by", Fs.str(Fs.name(this))).put("role", Fs.str(prefs(this).getString("role", "")))
+                    .put("ts", Fs.intv(System.currentTimeMillis()));
+            String id = "n" + Long.toString(System.currentTimeMillis(), 36) + Integer.toString((int) (Math.random() * 1e6), 36);
+            JSONArray w = new JSONArray().put(new JSONObject().put("update", new JSONObject().put("name", Fs.docPath(this, "rlog/" + id)).put("fields", f)));
+            Fs.commit(this, w);
+        } catch (Exception ignore) { }
+    }
+
     /** 🎵 चुनी हुई धुन: t1..t10 (APK में res/raw/order_tN) या "sys" = फोन का अलार्म */
     private Uri tone() {
-        String t = prefs(this).getString("tone", "t1");
+        String t = testTone != null ? testTone : prefs(this).getString("tone", "t1");
         if (t != null && t.matches("t\\d{1,2}")) {
             int id = getResources().getIdentifier("order_" + t, "raw", getPackageName());
             if (id != 0) return Uri.parse("android.resource://" + getPackageName() + "/" + id);
@@ -351,7 +555,7 @@ public class OrderRingService extends Service {
         alarmNote(l);
         stopSound();
         startSound();
-        h.postDelayed(new Runnable() { public void run() { if (pending == 0) { stopSound(); cancelAlarm(); } } }, 8000);
+        h.postDelayed(new Runnable() { public void run() { testTone = null; if (pending == 0) { stopSound(); cancelAlarm(); } } }, 8000);
     }
 
     @Override
@@ -359,6 +563,7 @@ public class OrderRingService extends Service {
         running = false;
         try { h.removeCallbacksAndMessages(null); } catch (Exception ignore) { }
         stopSound();
+        remStop();
         cancelAlarm();
         try { th.quitSafely(); } catch (Exception ignore) { }
         try { if (wl != null && wl.isHeld()) wl.release(); } catch (Exception ignore) { }

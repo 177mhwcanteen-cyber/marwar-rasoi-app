@@ -430,6 +430,8 @@ public class BtPrinterPlugin extends Plugin {
         e.putInt("open", call.getInt("open", -1));
         e.putInt("close", call.getInt("close", -1));
         e.putBoolean("loud", call.getBoolean("loud", true));
+        e.putBoolean("orders", call.getBoolean("orders", true)); // वाइस शेफ: ऑर्डर की घंटी नहीं, सिर्फ़ रिमाइंडर
+        e.putString("role", call.getString("role", ""));
         String tone = call.getString("tone", "");
         if (tone != null && tone.length() > 0) e.putString("tone", tone);
         e.putBoolean("on", true);
@@ -497,7 +499,10 @@ public class BtPrinterPlugin extends Plugin {
     @PluginMethod
     public void ringTest(PluginCall call) {
         try {
-            androidx.core.content.ContextCompat.startForegroundService(getContext(), new Intent(getContext(), OrderRingService.class).setAction(OrderRingService.A_TEST));
+            Intent ti = new Intent(getContext(), OrderRingService.class).setAction(OrderRingService.A_TEST);
+            String tt = call.getString("tone", "");
+            if (tt != null && tt.length() > 0) ti.putExtra("tone", tt);
+            androidx.core.content.ContextCompat.startForegroundService(getContext(), ti);
         } catch (Exception e) { call.reject("घंटी नहीं बजी: " + e.getMessage()); return; }
         call.resolve(ringState());
     }
