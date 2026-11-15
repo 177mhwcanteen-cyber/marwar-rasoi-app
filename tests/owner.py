@@ -145,6 +145,9 @@ async def main():
         tp = tdir + "/tm.csv"; open(tp, "w").write("Bill No,Bill Date,Grand Total\n880,15-11-2026,300\n999,15-11-2026,120\n")
         await s.click('[data-a="bills"]'); await s.set_input_files("#tmf", tp); await s.wait_for_selector("#tmr .sum"); t = await s.inner_text("#tmr")
         ok("मिल गए" in t and "TMBill में कुल 2 बिल" in t, "TMBill मिलान — " + t[:200]); await s.screenshot(path=SH + "/rasoi-tmbill.png"); await s.click("#sheet .sx")
+        # ✏️ ग्राहक ने नाम ठीक किया → डायरेक्टर "✅ सही" → सूची + संदेश + खाते में नया नाम
+        await s.evaluate("COL('cname').add({m:'9000011111',n:'Hav Test Jawan',old:'Test Jawan'})"); await s.click('[data-a="cust"]'); await s.wait_for_selector("[data-nmy]"); ok("Hav Test Jawan" in await s.inner_text("#sheet"), "नाम-सुधार दिखा")
+        await s.click("[data-nmy]"); await s.wait_for_timeout(600); ok(await s.evaluate("CU.by['9000011111'].n") == "Hav Test Jawan" and await s.evaluate("(async()=>{const h=await sha256('mr|9000011111|abc234');return LS.get('mr_c_cacc',[]).find(y=>y.id===h).n})()") == "Hav Test Jawan" and await s.locator("[data-nmy]").count() == 0, "नाम तीनों जगह बदला"); await s.click("#sheet .sx")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: डायरेक्टर के औज़ार पास")
 asyncio.run(main())
