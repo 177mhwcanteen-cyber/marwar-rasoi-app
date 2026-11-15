@@ -1,4 +1,4 @@
-"""मारवाड़ रसोई — मालिक के औज़ार (डेमो मोड): 💰 उधारी · 🤖 Claude का कोड + अपने-आप खेप · 🚚 177 MH से आया माल का मिलान · 🗺️ टीम का नक्शा।
+"""मारवाड़ रसोई — डायरेक्टर के औज़ार (डेमो मोड): 💰 उधारी · 🤖 Claude का कोड + अपने-आप खेप · 🚚 177 MH से आया माल का मिलान · 🗺️ टीम का नक्शा।
 चलाएँ: node scripts/build.mjs && python3 tests/owner.py www <shots-dir>"""
 import asyncio, re, sys, json, base64, time, threading, http.server, functools, os
 from playwright.async_api import async_playwright
@@ -27,13 +27,13 @@ async def main():
         await cx.add_init_script("const S=%s;if(!localStorage.getItem('mr_me'))for(const k in S)localStorage.setItem(k,JSON.stringify(S[k]));" % json.dumps(seed, ensure_ascii=False))
         s = await cx.new_page(); s.on("pageerror", lambda e: errs.append(str(e)))
         await s.goto("http://127.0.0.1:8825/"); await s.wait_for_selector(".sum.own"); await s.wait_for_timeout(600)
-        # 🤖 खेप अपने-आप (मालिक के खुलते ही, एक ही बार)
+        # 🤖 खेप अपने-आप (डायरेक्टर के खुलते ही, एक ही बार)
         A = json.loads(await s.evaluate("localStorage.getItem('mr_c_assets')") or "[]"); ok(any(x["id"] == "a01" and x["q"] == 16 for x in A), "खेप से प्रॉपर्टी: " + str(A))
         await s.reload(); await s.wait_for_timeout(700); ok(len(json.loads(await s.evaluate("localStorage.getItem('mr_c_stock')"))) == 1, "खेप दोबारा नहीं लगी")
         # 🚚 177 से आया माल
         await s.click('[data-t="store"]'); await s.wait_for_selector("[data-ibok]"); t = await s.inner_text("#pg"); ok("177 MH कैंटीन से माल" in t and "MH-4521" in t and "30 L" in t, "आने वाला माल + खेप का स्टॉक: " + t[:200])
         await s.click('[data-ibok="ib1"]'); await s.wait_for_timeout(300); ok("45 L" in await s.inner_text("#pg") and await s.locator('[data-ibok="ib1"]').count() == 0, "मिल गया → स्टॉक 30+15")
-        await s.click('[data-ibno="ib2"]'); await s.fill("#ibn", "10 की जगह 6 पैकेट आए"); await s.click("#ibs"); await s.wait_for_timeout(300); t = await s.inner_text("#pg"); ok("नहीं मिला / कम मिला" in t and "6 पैकेट" in t, "कम मिला → मालिक को लाल कार्ड")
+        await s.click('[data-ibno="ib2"]'); await s.fill("#ibn", "10 की जगह 6 पैकेट आए"); await s.click("#ibs"); await s.wait_for_timeout(300); t = await s.inner_text("#pg"); ok("नहीं मिला / कम मिला" in t and "6 पैकेट" in t, "कम मिला → डायरेक्टर को लाल कार्ड")
         await s.screenshot(path=SH + "/rasoi-inbox.png")
         # 💰 उधारी + 🤖 कोड
         await s.click('[data-t="more"]'); await s.click('[data-a="code"]'); await s.fill("#cc", "MR1:xyz"); await s.click("#cgo"); ok("अधूरा या ग़लत" in await s.inner_text("#ce"), "ग़लत कोड रुका")
@@ -82,13 +82,13 @@ async def main():
         await s.click('[data-g="out"]'); await s.fill("#ga", "1200"); await s.click('[data-gc="1"]'); await s.click("#gsv"); ok("नाम लिखें" in await s.inner_text("#ge"), "बिना नाम पैसा नहीं निकलता"); await s.fill("#gw", "रमेश"); await s.click("#gsv"); await s.wait_for_function("document.querySelector('#gl').innerText.includes('₹3800')")
         await s.click('[data-g="close"]'); await s.fill("#ga", "3500"); await s.click("#gsv"); ok("कारण लिखें" in await s.inner_text("#ge"), "फ़र्क पर कारण ज़रूरी"); await s.fill("#gn", "300 की पर्ची नहीं मिली"); await s.click("#gsv"); await s.wait_for_function("document.querySelector('#gl').innerText.includes('दिन बंद')")
         t = await s.inner_text("#gl"); ok("फ़र्क" in t and "₹3500" in t and "रमेश" in t and "₹1200" in t and "किसने कितना लिया" in t, "गल्ला: " + t[:200].replace("\n", " ")); await s.screenshot(path=SH + "/rasoi-galla.png"); await s.click("#sheet .sx")
-        # 🧑‍🍳 टीम: मालिक 5 साथी जोड़े + तनख्वाह; मैनेजर हाज़िरी/एडवांस (तनख्वाह न दिखे); गल्ले से दिया → गल्ले में भी
+        # 🧑‍🍳 टीम: डायरेक्टर 5 साथी जोड़े + तनख्वाह; मैनेजर हाज़िरी/एडवांस (तनख्वाह न दिखे); गल्ले से दिया → गल्ले में भी
         await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);TAB='more';draw()"); await s.click('[data-a="hr"]'); await s.click("#hseed"); await s.wait_for_selector('[data-he="new"]'); ok(await s.locator("[data-he]").count() == 6 and "9166753417" in await s.inner_text("#hb"), "5 साथी जुड़े (स्वरूप सा का नंबर)")
         await s.locator("[data-he]").nth(1).click(); await s.fill("#en1", "रामलाल"); await s.fill("#es1", "15000"); await s.click("#esv1"); await s.wait_for_function("document.querySelector('#hb').innerText.includes('₹15000')"); await s.click("#sheet .sx")
         await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); await s.click('[data-a="hr"]'); await s.wait_for_selector("[data-ha]"); ok("तनख्वाह का खर्च" not in await s.inner_text("#hb"), "मैनेजर को तनख्वाह नहीं दिखती")
         eid = (await s.locator("[data-ha]").nth(4).get_attribute("data-ha")).split("|")[0]; await s.click(f'[data-ha="{eid}|P"]'); await s.wait_for_timeout(200); ok("1/5" in await s.inner_text("#hb"), "हाज़िरी लगी")
         await s.click('[data-ht="pay"]'); await s.select_option("#pe", eid); await s.fill("#pa", "500"); await s.click("#psv"); await s.wait_for_function("document.querySelector('#hb').innerText.includes('गल्ले से')"); await s.click('[data-ht="mon"]'); t = await s.inner_text("#hb"); ok("रामलाल" in t and "₹500" in t and "₹15000" not in t, "मैनेजर: लिया दिखे, तनख्वाह नहीं"); await s.click("#sheet .sx")
-        await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);draw()"); await s.click('[data-a="hr"]'); await s.wait_for_selector("[data-ha]"); ok("₹500" in await s.inner_text("#hb"), "आज का तनख्वाह-खर्च (15000÷30)"); await s.click('[data-ht="mon"]'); t = await s.inner_text("#hb"); ok("₹15000" in t and "बाकी देना" in t, "मालिक का महीने का हिसाब: " + t[:150].replace("\n", " ")); await s.screenshot(path=SH + "/rasoi-team.png"); await s.click("#sheet .sx")
+        await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);draw()"); await s.click('[data-a="hr"]'); await s.wait_for_selector("[data-ha]"); ok("₹500" in await s.inner_text("#hb"), "आज का तनख्वाह-खर्च (15000÷30)"); await s.click('[data-ht="mon"]'); t = await s.inner_text("#hb"); ok("₹15000" in t and "बाकी देना" in t, "डायरेक्टर का महीने का हिसाब: " + t[:150].replace("\n", " ")); await s.screenshot(path=SH + "/rasoi-team.png"); await s.click("#sheet .sx")
         await s.click('[data-a="galla"]'); await s.wait_for_selector('[data-g="in"]'); ok("रामलाल" in await s.inner_text("#gl"), "गल्ले से दिया एडवांस गल्ले में भी दर्ज"); await s.click("#sheet .sx")
         # रसोइया: ऑर्डर/टेबल/ऑर्डर-लें नहीं — सिर्फ़ स्टोर और "और"
         await s.evaluate("ME={name:'रसोइया',role:'kitchen'};LS.set('mr_me',ME);TAB='orders';draw()"); ok(await s.locator('#tabs button:visible').count() == 2 and await s.locator('#tabs button.on').get_attribute("data-t") == "store", "रसोइया को ऑर्डर नहीं दिखते")
@@ -98,5 +98,5 @@ async def main():
         for k in ["water", "waiter", "bill"]: await t.click(f'[data-call="{k}"]'); await t.wait_for_selector(f'[data-call="{k}"].sent'); await t.wait_for_timeout(2700)
         ok(await t.locator("[data-call].sent").count() == 3 and "marwar-rasoi-menu.pdf" in await t.get_attribute("#mpdf", "href"), "तीनों पुकार चलीं + Menu PDF"); await t.close()
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
-    print("✅ मारवाड़ रसोई: मालिक के औज़ार पास")
+    print("✅ मारवाड़ रसोई: डायरेक्टर के औज़ार पास")
 asyncio.run(main())

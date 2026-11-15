@@ -1,5 +1,5 @@
 /* मारवाड़ रसोई — 📦 स्टोर (आया / रसोई को दिया / स्टॉक), 🪑 प्रॉपर्टी, ✅ चेकलिस्ट।  नियम: docs/होटल-प्रबंधन-योजना-प्रॉम्प्ट.txt
-   🚫 यहाँ से कोई बिल/रसीद नहीं छपती। कोई एंट्री मिटती नहीं — ग़लती हो तो "गिनती ठीक करें" (कारण के साथ, मालिक को दिखती है)।
+   🚫 यहाँ से कोई बिल/रसीद नहीं छपती। कोई एंट्री मिटती नहीं — ग़लती हो तो "गिनती ठीक करें" (कारण के साथ, डायरेक्टर को दिखती है)।
    stock/{id}: {t: in|out|req|adj, ts, by, src, sph, to, items[{id,n,u,q,r}], total, note, status, gby, gts, oid}   sitems/{id}: {n,u,custom,min}
    assets/{id}: {g,n,q,c,cts,cby,ph}   checks/{तारीख}: {open:{id:{by,ts}},close:{…}}  checks/w-<साल>-<हफ़्ता>: {week:{…}}   conf/checklist: {open:[{id,t}],…} */
 const ST8 = { cat: [], byId: {}, byBc: {}, mov: [], sit: {}, ready: false, view: "home", q: "" };
@@ -118,27 +118,27 @@ function storeItem(id) {
   if (!canStore()) return;
   $("#mns", b).onclick = async () => { const v = +$("#mn", b).value || 0; try { await COL("sitems").set(id, { min: v, n: it.n, u: it.u }); ST8.sit[id] = Object.assign(ST8.sit[id] || { id }, { min: v, n: it.n, u: it.u }); closeSheet(); toast("सीमा सेव ✔"); draw() } catch (e) { $("#ie", b).textContent = "सेव नहीं हुआ" } };
   $("#aqs", b).onclick = async () => { const v = $("#aq", b).value; if (v === "") return $("#ie", b).textContent = "गिनी हुई मात्रा लिखें"; const d = +v - (Q[id] || 0); if (!d) return closeSheet();
-    try { const m = await COL("stock").add({ t: "adj", by: ME.name, items: [{ id, n: it.n, u: it.u, q: d }], note: "गिनती: ऐप में " + qf(Q[id] || 0) + ", असल " + qf(+v) }); ST8.mov.push(m); closeSheet(); toast("गिनती ठीक की ✔ (मालिक को दिखेगी)"); draw() } catch (e) { $("#ie", b).textContent = "सेव नहीं हुआ" } };
+    try { const m = await COL("stock").add({ t: "adj", by: ME.name, items: [{ id, n: it.n, u: it.u, q: d }], note: "गिनती: ऐप में " + qf(Q[id] || 0) + ", असल " + qf(+v) }); ST8.mov.push(m); closeSheet(); toast("गिनती ठीक की ✔ (डायरेक्टर को दिखेगी)"); draw() } catch (e) { $("#ie", b).textContent = "सेव नहीं हुआ" } };
 }
 async function storeGive(id) { const m = ST8.mov.find(x => x.id === id); if (!m) return; try { await COL("stock").set(id, { t: "out", status: "given", gby: ME.name, gts: now() }); Object.assign(m, { t: "out", status: "given", gby: ME.name, gts: now() }); if (m.oid) DB.upd(m.oid, { status: "done" }, ME.name).catch(() => 0); toast("दे दिया — स्टॉक घटा ✔"); draw() } catch (e) { toast("सेव नहीं हुआ — नेट देखें") } }
-/* 🚚 177 MH से आया माल: मिल गया → स्टॉक में "आया"; नहीं/कम मिला → मालिक को लाल कार्ड (दोनों तरफ़ का मिलान) */
+/* 🚚 177 MH से आया माल: मिल गया → स्टॉक में "आया"; नहीं/कम मिला → डायरेक्टर को लाल कार्ड (दोनों तरफ़ का मिलान) */
 async function inboxDo(id, okk) { const x = (ST8.inbox || []).find(v => v.id === id); if (!x) return;
   try { if (okk) { const m = await COL("stock").add({ t: "in", by: ME.name, src: "177 MH कैंटीन", ref: x.bill || "", items: x.items, total: x.total || 0, note: "177 का बिल " + (x.bill || "") + " — मिलान से" }); ST8.mov.push(m); await COL("inbox").set(id, { status: "ok", rby: ME.name, rts: now() }); x.status = "ok"; toast("स्टॉक में जुड़ गया ✔"); return draw() }
-    const b = sheet(`<h3>❌ क्या नहीं मिला / कम मिला?</h3><textarea class="in" id="ibn" rows="3" placeholder="जैसे: तेल 15 की जगह 10 लीटर आया"></textarea><button class="btn big" id="ibs">मालिक को बताएँ</button>`);
-    $("#ibs", b).onclick = async () => { const n = $("#ibn", b).value.trim(); if (n.length < 3) return toast("लिखें क्या कम है"); await COL("inbox").set(id, { status: "no", rnote: n, rby: ME.name, rts: now() }); Object.assign(x, { status: "no", rnote: n, rby: ME.name }); closeSheet(); toast("मालिक को दिखेगा"); draw() } } catch (e) { toast("सेव नहीं हुआ — नेट देखें") } }
+    const b = sheet(`<h3>❌ क्या नहीं मिला / कम मिला?</h3><textarea class="in" id="ibn" rows="3" placeholder="जैसे: तेल 15 की जगह 10 लीटर आया"></textarea><button class="btn big" id="ibs">डायरेक्टर को बताएँ</button>`);
+    $("#ibs", b).onclick = async () => { const n = $("#ibn", b).value.trim(); if (n.length < 3) return toast("लिखें क्या कम है"); await COL("inbox").set(id, { status: "no", rnote: n, rby: ME.name, rts: now() }); Object.assign(x, { status: "no", rnote: n, rby: ME.name }); closeSheet(); toast("डायरेक्टर को दिखेगा"); draw() } } catch (e) { toast("सेव नहीं हुआ — नेट देखें") } }
 document.addEventListener("click", e => { if (TAB !== "store") return; const t = e.target.closest("#pg [data-se],#pg [data-si],#pg [data-give],#pg [data-sr],#pg [data-ibok],#pg [data-ibno]"); if (!t) return;
   if (t.dataset.ibok || t.dataset.ibno) return inboxDo(t.dataset.ibok || t.dataset.ibno, !!t.dataset.ibok);
   if (t.dataset.se) storeEntry(t.dataset.se); else if (t.dataset.si) storeItem(t.dataset.si); else if (t.dataset.give) storeGive(t.dataset.give); else storeLoad(true).then(draw) });
 document.addEventListener("input", e => { if (e.target.id === "stq") { ST8.q = e.target.value.trim().toLowerCase(); const p = e.target.selectionStart; draw(); const n = $("#stq"); n.focus(); try { n.setSelectionRange(p, p) } catch (x) { } } });
 
-/* ───────── 🪑 प्रॉपर्टी रजिस्टर: रजिस्टर की गिनती (मालिक तय करे) बनाम आख़िरी गिनती (मैनेजर गिने) ───────── */
+/* ───────── 🪑 प्रॉपर्टी रजिस्टर: रजिस्टर की गिनती (डायरेक्टर तय करे) बनाम आख़िरी गिनती (मैनेजर गिने) ───────── */
 async function assetsSheet() {
   const b = sheet(`<h3>🪑 प्रॉपर्टी रजिस्टर</h3><div id="al" class="empty">⏳…</div>`); let base = [], A = {};
   try { base = await fetch("data/assets.json", { cache: "no-cache" }).then(r => r.json()); (await COL("assets").list()).forEach(x => A[x.id] = x) } catch (e) { }
   const own = ME.role === "owner";
   const show = () => { const all = base.map(x => Object.assign({}, x, A[x.id] || {})).concat(Object.values(A).filter(x => x.custom)), G = [...new Set(all.map(x => x.g))], miss = all.filter(x => x.q > 0 && x.c != null && x.c < x.q);
     $("#al", b).outerHTML = `<div id="al"><div class="sum" style="grid-template-columns:repeat(3,1fr)"><div><b>${all.filter(x => x.q > 0).length}</b><small>चीज़ें दर्ज</small></div><div><b>${all.reduce((t, x) => t + (+x.q || 0), 0)}</b><small>कुल नग</small></div><div><b style="${miss.length ? "color:#b91c1c" : ""}">${miss.length}</b><small>गिनती में कम</small></div></div>
-    <p class="hint">${own ? "रजिस्टर = जितना होना चाहिए (आप भरें)।" : "रजिस्टर की गिनती मालिक भरते हैं।"} गिनती = मैनेजर ने गिनकर जो पाया। 📷 से फोटो लगाएँ।</p>
+    <p class="hint">${own ? "रजिस्टर = जितना होना चाहिए (आप भरें)।" : "रजिस्टर की गिनती डायरेक्टर भरते हैं।"} गिनती = मैनेजर ने गिनकर जो पाया। 📷 से फोटो लगाएँ।</p>
     ${G.map(g => `<div class="h">${E(g)}</div>${all.filter(x => x.g === g).map(x => `<div class="arow ${x.q > 0 && x.c != null && x.c < x.q ? "bad" : ""}" data-id="${x.id}"><label class="aph" ${x.ph ? `style="background-image:url(${x.ph})"` : ""}>${x.ph ? "" : "📷"}<input type="file" accept="image/*" capture="environment" hidden></label><span>${E(x.n)}${x.cts ? `<small>गिना: ${new Date(x.cts).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · ${E(x.cby || "")}</small>` : ""}</span>
       <i>रजिस्टर<input type="number" inputmode="numeric" data-f="q" value="${x.q ?? ""}" ${own ? "" : "disabled"}></i><i>गिनती<input type="number" inputmode="numeric" data-f="c" value="${x.c ?? ""}"></i></div>`).join("")}`).join("")}
     <div class="sline" style="margin-top:10px"><span><input class="in" id="an" placeholder="➕ नई चीज़ का नाम" style="margin:0"></span><button class="btn sm" id="aadd" style="width:auto;height:auto;padding:8px 10px">जोड़ें</button></div></div>` };
@@ -167,7 +167,7 @@ async function checkSheet(tab) {
       else { const n = $("#cn", b).value.trim(); if (n.length < 3) return toast("बिंदु लिखें"); const arr = (D.conf[tab] || []).concat([{ id: "x" + now().toString(36), t: n }]); await COL("conf").set("checklist", { [tab]: arr }); D.conf[tab] = arr; D.L[tab].push(arr[arr.length - 1]); show() } } catch (er) { toast("सेव नहीं हुआ — नेट देखें") } };
 }
 
-/* ───────── चरण 2 (14-11): 🧾 खरीद के बिल (मालिक/मैनेजर) · 🎲 रैंडम जाँच · 🔀 ट्रांसफ़र ───────── */
+/* ───────── चरण 2 (14-11): 🧾 खरीद के बिल (डायरेक्टर/मैनेजर) · 🎲 रैंडम जाँच · 🔀 ट्रांसफ़र ───────── */
 function billsSheet() { const L = ST8.mov.filter(m => isBuy(m) && m.ts >= today0() - 29 * 864e5).reverse(), by = {}; L.forEach(m => by[m.src || "—"] = (by[m.src || "—"] || 0) + (m.total || 0));
   sheet(`<h3>🧾 खरीद के बिल — 30 दिन</h3><div class="sum"><div><b>${L.length}</b><small>बिल</small></div><div><b>${rs(L.reduce((t, m) => t + (m.total || 0), 0))}</b><small>कुल खरीद</small></div><div><b>${L.filter(m => !m.bph).length}</b><small>बिना फोटो</small></div></div>
   <div class="h">🏪 दुकान-वार</div><div class="kot">${Object.entries(by).sort((a, c) => c[1] - a[1]).map(([n, v]) => `<div>${E(n)}<span>${rs(v)}</span></div>`).join("") || "<div>—</div>"}</div>
@@ -178,7 +178,7 @@ function auditSheet() { const Q = stockQty(), ids = Object.keys(Q).filter(id => 
   $("#as", b).onclick = async () => { const V = $$("[data-ac]", b).map(x => x.value); if (V.some(v => v === "")) return $("#ae", b).textContent = "सभी की गिनती लिखें (न हो तो 0)";
     const items = P.map((i, k) => ({ id: i.id, n: i.n, u: i.u, q: +V[k], was: Math.round(Q[i.id] * 1000) / 1000 })), bad = items.filter(l => Math.abs(l.q - l.was) > 0.001); $("#as", b).disabled = true;
     try { const d = await COL("stock").add({ t: "audit", by: ME.name, items, bad: bad.length, note: $("#an", b).value.trim() }); ST8.mov.push(d); $("#as", b).hidden = true;
-      $("#ar", b).innerHTML = `<div class="h">${bad.length ? "🔴 " + bad.length + " में फ़र्क मिला" : "✅ सब बराबर निकला"}</div><div class="kot">${items.map(l => `<div style="${Math.abs(l.q - l.was) > 0.001 ? "color:#b91c1c;font-weight:800" : ""}">${E(l.n)}<span>ऐप ${qf(l.was)} · गिना ${qf(l.q)}${Math.abs(l.q - l.was) > 0.001 ? " · फ़र्क " + qf(l.q - l.was) : " ✔"}</span></div>`).join("")}</div><p class="hint">यह जाँच मालिक को "आज की एंट्री" में दिखेगी। स्टॉक अपने-आप नहीं बदला — गिनती ठीक करनी हो तो सामान खोलकर "गिनती ठीक करें"।</p>`; draw() }
+      $("#ar", b).innerHTML = `<div class="h">${bad.length ? "🔴 " + bad.length + " में फ़र्क मिला" : "✅ सब बराबर निकला"}</div><div class="kot">${items.map(l => `<div style="${Math.abs(l.q - l.was) > 0.001 ? "color:#b91c1c;font-weight:800" : ""}">${E(l.n)}<span>ऐप ${qf(l.was)} · गिना ${qf(l.q)}${Math.abs(l.q - l.was) > 0.001 ? " · फ़र्क " + qf(l.q - l.was) : " ✔"}</span></div>`).join("")}</div><p class="hint">यह जाँच डायरेक्टर को "आज की एंट्री" में दिखेगी। स्टॉक अपने-आप नहीं बदला — गिनती ठीक करनी हो तो सामान खोलकर "गिनती ठीक करें"।</p>`; draw() }
     catch (x) { $("#as", b).disabled = false; $("#ae", b).textContent = "सेव नहीं हुआ — नेट देखें" } } }
 /* ───────── चरण A-2 (15-11): 🧑‍🍳 रसोई में (चार्ज + रात की बची गिनती → खपत) · 🛒 खरीद सूची · 📊 खर्च ───────── */
 function kitSheet() { const K = kitQty(), ids = Object.keys(K).filter(id => K[id] > 0.0005), val = ids.reduce((t, id) => t + K[id] * rateOf(id), 0), day0 = today0();

@@ -1,4 +1,4 @@
-"""मारवाड़ रसोई — पूरा बहाव (डेमो मोड): टेबल-QR से ऑर्डर + पानी → मैनेजर स्वीकार → बनाना → परोसा → TMBill नं. → पूरा; वेटर का ऑर्डर; मालिक को देर की घंटी।
+"""मारवाड़ रसोई — पूरा बहाव (डेमो मोड): टेबल-QR से ऑर्डर + पानी → मैनेजर स्वीकार → बनाना → परोसा → TMBill नं. → पूरा; वेटर का ऑर्डर; डायरेक्टर को देर की घंटी।
 चलाएँ: node scripts/build.mjs && python3 tests/flow.py www <shots-dir>"""
 import asyncio, re, sys, threading, http.server, functools, os
 from playwright.async_api import async_playwright
@@ -58,12 +58,12 @@ async def main():
         await st.click('[data-t="tables"]'); ok(await st.locator(".tb.busy").count() == 1 and "₹219" in await st.inner_text('.tb[data-tb="7"]'), "टेबल 7 व्यस्त")
         await st.screenshot(path=SH + "/rasoi-tables.png")
         await st.click('[data-t="take"]'); await st.wait_for_selector(".mc"); await st.screenshot(path=SH + "/rasoi-take.png")
-        # मालिक: 3 मिनट पुराना नया ऑर्डर ही बजे
+        # डायरेक्टर: 3 मिनट पुराना नया ऑर्डर ही बजे
         await st.evaluate("""()=>{ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);DB.add({kind:'order',type:'delivery',items:[{id:'x',n:'Dal Fry',q:1,s:150,veg:true}],total:150,by:'customer',name:'Test',addr:'Q 12'});}""")
-        await st.click('[data-t="orders"]'); await st.wait_for_timeout(200); ok(await st.evaluate("BELL.on") is False, "मालिक: ताज़ा ऑर्डर पर घंटी नहीं")
+        await st.click('[data-t="orders"]'); await st.wait_for_timeout(200); ok(await st.evaluate("BELL.on") is False, "डायरेक्टर: ताज़ा ऑर्डर पर घंटी नहीं")
         await st.evaluate("""()=>{const a=DB.all();a[a.length-1].ts=Date.now()-200000;LS.set('mr_orders',a);ALL=a;draw()}"""); await st.wait_for_timeout(200)
-        ok(await st.evaluate("BELL.on") is True and await st.locator(".oc.late .esc").count() == 1, "मालिक: 3 मिनट बाद घंटी + लाल कार्ड")
-        await st.click('[data-t="more"]'); ok("डायरेक्टर तक पहुँचे" in await st.inner_text("#pg"), "मालिक की रिपोर्ट"); await st.click('[data-a="bills"]'); t = await st.inner_text("#sheet"); ok("4521" in t and "नकद" in t, "डायरेक्टर: आज के बिल — " + t[:200]); await st.click("#sheet .sx")
+        ok(await st.evaluate("BELL.on") is True and await st.locator(".oc.late .esc").count() == 1, "डायरेक्टर: 3 मिनट बाद घंटी + लाल कार्ड")
+        await st.click('[data-t="more"]'); ok("डायरेक्टर तक पहुँचे" in await st.inner_text("#pg"), "डायरेक्टर की रिपोर्ट"); await st.click('[data-a="bills"]'); t = await st.inner_text("#sheet"); ok("4521" in t and "नकद" in t, "डायरेक्टर: आज के बिल — " + t[:200]); await st.click("#sheet .sx")
         q = await cx.new_page(); await q.goto(B + "qr.html"); await q.wait_for_timeout(500); ok(await q.locator(".c img, .c canvas").count() >= 16, "16 QR कार्ड")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: पूरा बहाव पास")

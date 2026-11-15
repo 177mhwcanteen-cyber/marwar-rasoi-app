@@ -1,9 +1,9 @@
 // मारवाड़ रसोई — Firestore के नियम (विक्रम जी Firebase कंसोल → Firestore → Rules में पूरा चिपकाएँ)
-// मालिक = नीचे लिखा नंबर (लॉगिन: मोबाइल + पिन → <नंबर>@marwar-rasoi.app)। मालिक सबसे पहले अपना खाता बनाएँ।
+// v8 (15-11-2026): डायरेक्टर = पक्की (verified) ईमेल marwarrasoimr@gmail.com, या पुराना नंबर 9509553600 (मोबाइल + पिन)। लोकेशन सिर्फ़ डायरेक्टर देखे।
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
-    function owner() { return request.auth != null && request.auth.token.email in ['9509553600@marwar-rasoi.app']; }
+    function owner() { return request.auth != null && (request.auth.token.email in ['9509553600@marwar-rasoi.app'] || (request.auth.token.email == 'marwarrasoimr@gmail.com' && request.auth.token.email_verified == true)); }
     function role() { return get(/databases/$(db)/documents/staff/$(request.auth.uid)).data.role; }
     function staff() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager', 'waiter', 'kitchen'])); }
     function mgr() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager'])); }
@@ -59,8 +59,8 @@ service cloud.firestore {
         && d().items is list && d().items.size() <= 80 && d().ts is int && d().ts > request.time.toMillis() - 600000 && d().ts < request.time.toMillis() + 600000);
       allow delete: if false;
     }
-    // लोकेशन (APK की TrackService): अपना ही लिखे, टीम पढ़े
-    match /live/{uid} { allow read: if staff(); allow write: if request.auth != null && request.auth.uid == uid && staff(); }
+    // लोकेशन (APK की TrackService): अपना ही लिखे, सिर्फ़ डायरेक्टर पढ़े
+    match /live/{uid} { allow read: if owner(); allow write: if request.auth != null && request.auth.uid == uid && staff(); }
     // लोकेशन के बिंदु (रास्ता): टीम लिखे, मालिक पढ़े
     match /trk/{id} { allow create, update: if staff(); allow read: if owner(); }
   }

@@ -1,4 +1,4 @@
-"""मारवाड़ रसोई — 📦 स्टोर (आया/दिया/माँग/स्टॉक/कम-स्टॉक/गिनती), 🪑 प्रॉपर्टी, ✅ चेकलिस्ट, 📣 मालिक का संदेश (डेमो मोड)।
+"""मारवाड़ रसोई — 📦 स्टोर (आया/दिया/माँग/स्टॉक/कम-स्टॉक/गिनती), 🪑 प्रॉपर्टी, ✅ चेकलिस्ट, 📣 डायरेक्टर का संदेश (डेमो मोड)।
 चलाएँ: node scripts/build.mjs && python3 tests/store.py www <shots-dir>"""
 import asyncio, re, sys, threading, http.server, functools, os
 from playwright.async_api import async_playwright
@@ -40,7 +40,7 @@ async def main():
         ok("-2 L" in t.replace("−", "-") and await s.locator("[data-give]").count() == 0 and await s.evaluate("BELL.on") is False, "दे दिया → स्टॉक −2 (पहले चढ़ाया नहीं था), माँग बंद, घंटी बंद: " + t[:200])
         # ✏️ असली गिनती
         await s.click('.stk [data-si="r01"]'); await s.fill("#aq", "2.5"); await s.click("#aqs"); await s.wait_for_timeout(300); ok("2.5 kg" in await s.inner_text("#pg") and "गिनती ठीक की" in await s.inner_text("#pg"), "गिनती-सुधार दर्ज")
-        # 🪑 प्रॉपर्टी: मालिक रजिस्टर भरे, मैनेजर की गिनती कम → लाल
+        # 🪑 प्रॉपर्टी: डायरेक्टर रजिस्टर भरे, मैनेजर की गिनती कम → लाल
         await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);TAB='more';draw()"); await s.click('[data-a="assets"]'); await s.wait_for_selector(".arow")
         ok(await s.locator(".arow").count() >= 45, "प्रॉपर्टी की सूची"); r = s.locator('.arow[data-id="a02"]'); await r.locator('[data-f="q"]').fill("64"); await r.locator('[data-f="q"]').blur(); await s.wait_for_timeout(250)
         r = s.locator('.arow[data-id="a02"]'); await r.locator('[data-f="c"]').fill("62"); await r.locator('[data-f="c"]').blur(); await s.wait_for_timeout(250)
@@ -49,7 +49,7 @@ async def main():
         await s.click('[data-a="check"]'); await s.wait_for_selector(".crow"); await s.click('[data-ct="open"]'); n = await s.locator(".crow").count(); await s.locator(".crow").first.click(); await s.wait_for_timeout(200)
         ok(n == 11 and await s.locator(".crow.on").count() == 1 and "1 / 11" in await s.inner_text("#cl") and "विक्रम जी" in await s.inner_text(".crow.on"), "चेकलिस्ट ✔ नाम-समय के साथ")
         await s.fill("#cn", "जनरेटर का डीज़ल देखा"); await s.click("#cadd"); await s.wait_for_timeout(200); ok(await s.locator(".crow").count() == 12, "नया बिंदु जुड़ा"); await s.screenshot(path=SH + "/rasoi-check.png"); await s.click("#sheet .sx")
-        # 📣 मालिक का संदेश → मैनेजर को घंटी
+        # 📣 डायरेक्टर का संदेश → मैनेजर को घंटी
         await s.click('[data-a="msg"]'); await s.fill("#mt", "शाम 7 बजे 20 लोगों की पार्टी है"); await s.click("#ms"); await s.wait_for_timeout(300)
         await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);draw()"); await s.wait_for_timeout(200); t = await s.inner_text("#pg")
         ok("डायरेक्टर का संदेश" in t and "20 लोगों की पार्टी" in t and "पढ़ लिया" in t and await s.evaluate("BELL.on") is True, "संदेश + घंटी")

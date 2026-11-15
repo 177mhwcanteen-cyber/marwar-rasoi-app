@@ -1,4 +1,4 @@
-/* मारवाड़ रसोई — मालिक के औज़ार: 🗺️ टीम का नक्शा · 💰 उधारी · 🤖 Claude का डेटा (खेप + कोड) · 🚚 177 MH से आया माल का मिलान
+/* मारवाड़ रसोई — डायरेक्टर के औज़ार: 🗺️ टीम का नक्शा · 💰 उधारी · 🤖 Claude का डेटा (खेप + कोड) · 🚚 177 MH से आया माल का मिलान
    नियम: docs/होटल-प्रबंधन-योजना-प्रॉम्प्ट.txt। लोकेशन APK की TrackService लिखती है: live/{uid} {name,lat,lng,acc,ts,seen,running} · trk/{तारीख_uid_घंटा} {uid,name,date,hr,pts["ts,lat,lng,…"]} */
 const agoHi = ts => { const m = Math.floor((now() - ts) / 60000); return m < 1 ? "अभी" : m < 60 ? m + " मिनट पहले" : m < 1440 ? Math.floor(m / 60) + " घंटे पहले" : Math.floor(m / 1440) + " दिन पहले" };
 const loadLib = () => window.L ? Promise.resolve() : new Promise((res, rej) => { const c = document.createElement("link"); c.rel = "stylesheet"; c.href = "lib/leaflet.css"; document.head.appendChild(c); const s = document.createElement("script"); s.src = "lib/leaflet.js"; s.onload = res; s.onerror = rej; document.head.appendChild(s) });
@@ -41,7 +41,7 @@ async function udharSheet() {
       if (t.dataset.up) { const pays = (u.pays || []).concat([{ amt, ts: now(), by: ME.name, how: w }]); await COL("udhar").set(u.id, { pays }); u.pays = pays; toast("जमा दर्ज ✔") }
       else { const lines = (u.lines || []).concat([{ amt, ts: now(), by: ME.name, why: w }]); await COL("udhar").set(u.id, { lines }); u.lines = lines; toast("उधार जुड़ा ✔") } show(u.id) } catch (x) { toast("सेव नहीं हुआ — नेट/नियम देखें") } };
 }
-/* ───────── 🤖 Claude का डेटा: (1) खेप web/data/packs/<id>.json — मालिक का ऐप खुलते ही अपने-आप; (2) निजी कोड "MR1:…" — मालिक चिपकाए ─────────
+/* ───────── 🤖 Claude का डेटा: (1) खेप web/data/packs/<id>.json — डायरेक्टर का ऐप खुलते ही अपने-आप; (2) निजी कोड "MR1:…" — डायरेक्टर चिपकाए ─────────
    खेप/कोड का ढाँचा: {id, note, assets:{a02:{q:64}}, sitems:[{id,n,u,min}], stock:[{t:"in",src,items[{id,n,u,q,r}],total,note}], udhar:[{name,phone,amt,why}], checklist:{open:["…"],close:[],week:[]}}
    सिर्फ़ जोड़ता है — जो भरा है उसे नहीं बदलता; हर खेप एक ही बार (conf/packs)। */
 async function applyPack(P, who) {
@@ -67,7 +67,7 @@ function codeSheet() {
       const r = await applyPack(P, "Claude (कोड " + P.id + ")"); await COL("conf").set("packs", { [k]: now() }); ST8.ready = false; closeSheet(); toast("🤖 लग गया: " + r); draw() } catch (e) { $("#cgo", b).disabled = false; er("नहीं लगा — नेट/नियम देखें (" + String(e.message).slice(0, 50) + ")") } };
 }
 
-/* ───────── 📊 रिपोर्ट (सिर्फ़ मालिक; 177 के डैशबोर्ड जैसा): पिछले 7 दिन के ऑर्डर — रोज़ की बिक्री, डिश, तरीका, साथी-वार काम, देर/मना/बिना TMBill ─────────
+/* ───────── 📊 रिपोर्ट (सिर्फ़ डायरेक्टर; 177 के डैशबोर्ड जैसा): पिछले 7 दिन के ऑर्डर — रोज़ की बिक्री, डिश, तरीका, साथी-वार काम, देर/मना/बिना TMBill ─────────
    ध्यान: यह ऐप में आए ऑर्डर का हिसाब है; पक्की बिक्री TMBill में। ⭐ "ज़्यादा बिकने वाले" (ऑर्डर लें) इसी गिनती से — LS mr_pop + आज के ऑर्डर। */
 function popCount() { const P = Object.assign({}, LS.get("mr_pop", {})); (typeof ALL !== "undefined" ? ALL : []).forEach(o => o.kind !== "call" && o.status !== "rej" && (o.items || []).forEach(i => P[i.id] = (P[i.id] || 0) + (+i.q || 1))); return P }
 async function reportSheet() {

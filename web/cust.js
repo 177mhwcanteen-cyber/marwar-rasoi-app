@@ -1,5 +1,5 @@
-/* मारवाड़ रसोई — 👥 ग्राहक (सिर्फ़ मालिक): TMBill से बनी "Customer Biodata" CSV मालिक अपने फोन से चढ़ाए → Firestore cust/p0… (हर टुकड़े में 150 ग्राहक, rows = JSON)।
-   निजी डेटा GitHub पर कभी नहीं। नई फ़ाइल चढ़ाने पर सूची ताज़ा होती है; मालिक की लिखी टिप्पणी/"संदेश भेजा" अलग cnote/{मोबाइल} में — वह नहीं बदलती।
+/* मारवाड़ रसोई — 👥 ग्राहक (सिर्फ़ डायरेक्टर): TMBill से बनी "Customer Biodata" CSV डायरेक्टर अपने फोन से चढ़ाए → Firestore cust/p0… (हर टुकड़े में 150 ग्राहक, rows = JSON)।
+   निजी डेटा GitHub पर कभी नहीं। नई फ़ाइल चढ़ाने पर सूची ताज़ा होती है; डायरेक्टर की लिखी टिप्पणी/"संदेश भेजा" अलग cnote/{मोबाइल} में — वह नहीं बदलती।
    ग्राहक: {m मोबाइल, n नाम, pk नाम पक्का, ad पता, o ऑर्डर, sp खर्च, f पहला, l आख़िरी, d[पसंद], all, vg, tm, ty, pay, ud उधारी, cx रद्द, on दूसरे नाम, nt} */
 const CU = { rows: [], by: {}, notes: {}, ready: false, ts: 0 };
 function csvRows(t) { const R = []; let r = [], c = "", q = false; t = t.replace(/^﻿/, "");
@@ -20,7 +20,7 @@ const cKind = c => c.o >= 10 ? "vip" : c.o >= 4 ? "reg" : c.o >= 2 ? "some" : "n
 const CK = { vip: "👑 VIP", reg: "🔁 रेगुलर", some: "🙂 कभी-कभी", new: "🆕 नया" };
 const cName = c => c.n || "ग्राहक " + c.m.slice(-4);
 const dmy = s => s ? s.split("-").reverse().join("-") : "—";
-/* ऑर्डर कार्ड पर पहचान (सिर्फ़ मालिक के फोन में डेटा होता है) */
+/* ऑर्डर कार्ड पर पहचान (सिर्फ़ डायरेक्टर के फोन में डेटा होता है) */
 const custTag = ph => { const c = CU.by[String(ph || "").replace(/\D/g, "").slice(-10)]; return c ? `<div class="ctag">${CK[cKind(c)]} · ${c.o} ऑर्डर · ${rs(c.sp)}${c.d[0] ? " · पसंद: " + E(c.d[0]) : ""}${c.ud > 0 ? ` · <b>उधारी ${rs(c.ud)}</b>` : ""}</div>` : "" };
 /* संदेश: समय के हिसाब से Good morning/afternoon/evening + नाम; छोटा; "Royal Customer"; नई सुविधा (घर बैठे खाना + ग्रोसरी + सब्ज़ी) */
 function custMsg(c, kind) { const h = new Date().getHours(), gr = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening", nm = c.n ? " " + c.n + " ji" : "", link = CFG.homeUrl, fav = c.d.slice(0, 2).join(", "), hi = `${gr}${nm} 🙏 Marwar Rasoi, Jalipa se namaskar.`;
@@ -33,7 +33,7 @@ async function custSheet() {
   try { await custLoad(true) } catch (e) { return $("#cl", b).innerHTML = "नहीं खुला — Firebase के नए नियम (v4) Publish करें, फिर दोबारा खोलें।" }
   const up = !OWN ? "" : `<label class="btn gh sm" style="display:inline-block">📂 ${CU.rows.length ? "नई फ़ाइल चढ़ाएँ (ताज़ा करें)" : "ग्राहक-फ़ाइल (CSV) चुनें"}<input type="file" id="cf" accept=".csv,text/csv,text/comma-separated-values" hidden></label><div class="err" id="cerr"></div>`;
   const SEG = { win: ["😴 वापस बुलाएँ", c => c.o >= 4 && cDays(c) >= 30], top: ["🌟 यूनिट के बेस्ट", c => c.o >= 6], vip: ["👑 VIP", c => c.o >= 10], reg: ["🔁 रेगुलर", c => c.o >= 4 && c.o < 10], ud: ["💰 उधारी", c => c.ud > 0], name: ["❓ नाम पूछना", c => !c.pk && c.o >= 2], nw: ["🆕 नए", c => c.o === 1 && cDays(c) <= 14], all: ["सब", c => true] };
-  const show = () => { const R = CU.rows; if (!R.length) return $("#cl", b).outerHTML = !OWN ? `<div id="cl" class="empty">अभी ग्राहक-सूची नहीं चढ़ी — विक्रम जी चढ़ाएँगे।</div>` : `<div id="cl"><p class="hint">Claude की बनाई <b>Marwar-Rasoi-Customer-Biodata.csv</b> फ़ाइल यहाँ चुनें। डेटा सिर्फ़ आपके Firebase में जाएगा — सिर्फ़ मालिक देख सकता है।</p>${up}</div>`;
+  const show = () => { const R = CU.rows; if (!R.length) return $("#cl", b).outerHTML = !OWN ? `<div id="cl" class="empty">अभी ग्राहक-सूची नहीं चढ़ी — विक्रम जी चढ़ाएँगे।</div>` : `<div id="cl"><p class="hint">Claude की बनाई <b>Marwar-Rasoi-Customer-Biodata.csv</b> फ़ाइल यहाँ चुनें। डेटा सिर्फ़ आपके Firebase में जाएगा — सिर्फ़ डायरेक्टर देख सकता है।</p>${up}</div>`;
     const q = Q.toLowerCase(), L = R.filter(c => q ? (c.m + " " + c.n + " " + c.ad + " " + c.on + " " + c.all + " " + (c.am || []).join(" ") + " " + (c.un || "") + " " + (c.un2 || "")).toLowerCase().includes(q) : SEG[F][1](c)).filter(c => !U || c.un === U).sort((a, c) => F === "ud" && !q ? c.ud - a.ud : c.sp - a.sp);
     const kind = F === "ud" ? "ud" : F === "win" ? "back" : F === "name" ? "name" : "";
     $("#cl", b).outerHTML = `<div id="cl"><div class="sum"><div><b>${R.length}</b><small>ग्राहक</small></div><div><b>${rs(R.reduce((t, c) => t + c.sp, 0))}</b><small>कुल बिक्री</small></div><div><b>${rs(R.reduce((t, c) => t + Math.max(0, c.ud), 0))}</b><small>उधारी · ${R.filter(c => c.ud > 0).length} लोग</small></div></div>

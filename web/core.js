@@ -30,15 +30,18 @@ const dec = v => "stringValue" in v ? v.stringValue : "integerValue" in v ? +v.i
   : "arrayValue" in v ? (v.arrayValue.values || []).map(dec) : "mapValue" in v ? decF(v.mapValue.fields || {}) : null;
 const decF = f => Object.fromEntries(Object.keys(f || {}).map(k => [k, dec(f[k])]));
 const docOf = d => Object.assign(decF(d.fields), { id: d.name.slice(d.name.lastIndexOf("/") + 1) });
-const mail = ph => String(ph).replace(/\D/g, "").slice(-10) + "@marwar-rasoi.app";
+const mail = ph => String(ph).includes("@") ? String(ph).trim().toLowerCase() : String(ph).replace(/\D/g, "").slice(-10) + "@marwar-rasoi.app";
 const AUTH = {
   u: LS.get("mr_auth", null),
   save(r, ph) { this.u = { rt: r.refreshToken || r.refresh_token, idt: r.idToken || r.id_token, uid: r.localId || r.user_id, exp: now() + (+(r.expiresIn || r.expires_in || 3600)) * 1000, ph: ph || (this.u || {}).ph }; LS.set("mr_auth", this.u) },
   async call(what, ph, pin) {
     const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${what}?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail(ph), password: pin, returnSecureToken: true }) });
-    const j = await r.json(); if (!r.ok) throw new Error((j.error || {}).message || "लॉगिन नहीं हुआ"); this.save(j, String(ph).replace(/\D/g, "").slice(-10)); return this.u
+    const j = await r.json(); if (!r.ok) throw new Error((j.error || {}).message || "लॉगिन नहीं हुआ"); this.save(j, String(ph).includes("@") ? "" : String(ph).replace(/\D/g, "").slice(-10)); return this.u
   },
   signIn(ph, pin) { return this.call("signInWithPassword", ph, pin) }, signUp(ph, pin) { return this.call("signUp", ph, pin) },
+  /* 🎩 डायरेक्टर ईमेल से: खाते की ईमेल पक्की (verified) है या नहीं; नहीं तो पुष्टि का लिंक भेजें */
+  async idt(what, body) { const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${what}?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ idToken: this.u.idt }, body || {})) }); const j = await r.json(); if (!r.ok) throw new Error((j.error || {}).message || "नहीं हुआ"); return j },
+  async verified() { return !!(((await this.idt("lookup")).users || [])[0] || {}).emailVerified }, sendVerify() { return this.idt("sendOobCode", { requestType: "VERIFY_EMAIL" }) },
   async tok() {
     if (!this.u) return ""; if (now() < this.u.exp - 60000) return this.u.idt;
     const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(this.u.rt) });
