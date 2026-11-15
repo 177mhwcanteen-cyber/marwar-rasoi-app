@@ -48,7 +48,8 @@ async def main():
         await cu.bring_to_front(); await cu.wait_for_timeout(300); ok("Accepted · ready in ~25 min" in await cu.inner_text(".trk"), "ग्राहक: स्वीकार + समय — " + await cu.inner_text(".trk"))
         ok(await cu.locator('[data-call="water"].sent').count() == 0, "पानी की पुकार पूरी")
         await st.bring_to_front(); await st.click('.oc [data-a="cook"]'); await st.wait_for_timeout(150); await st.click('.oc [data-a="out"]'); await st.wait_for_timeout(150)
-        await st.click('.oc [data-a="done"]'); await st.fill("#tmn", "4521"); await st.click("#tmo"); await st.wait_for_timeout(200)
+        await st.click('.oc [data-a="done"]'); await st.fill("#tmn", "4521"); await st.click("#tmo"); ok("कैसे मिला" in await st.inner_text("#tme"), "भुगतान का तरीका ज़रूरी")
+        await st.click('[data-pm="cash"]'); await st.click("#tmo"); await st.wait_for_timeout(300); ok(await st.evaluate("COL('galla').list().then(L => L.length && L[0].cat === 'नकद बिक्री')"), "नकद → गल्ले में अपने-आप")
         ok("TMBill 4521" in await st.inner_text("#pg"), "TMBill नंबर दर्ज")
         # वेटर का ऑर्डर
         await st.click('[data-t="take"]'); await st.wait_for_selector(".mc"); await st.click('[data-tn="7"]'); await st.click('.mc[data-id="rs-chicken-biryani"] .ad'); await st.click("#bar"); await st.click("#send")
@@ -62,7 +63,7 @@ async def main():
         await st.click('[data-t="orders"]'); await st.wait_for_timeout(200); ok(await st.evaluate("BELL.on") is False, "मालिक: ताज़ा ऑर्डर पर घंटी नहीं")
         await st.evaluate("""()=>{const a=DB.all();a[a.length-1].ts=Date.now()-200000;LS.set('mr_orders',a);ALL=a;draw()}"""); await st.wait_for_timeout(200)
         ok(await st.evaluate("BELL.on") is True and await st.locator(".oc.late .esc").count() == 1, "मालिक: 3 मिनट बाद घंटी + लाल कार्ड")
-        await st.click('[data-t="more"]'); ok("डायरेक्टर तक पहुँचे" in await st.inner_text("#pg"), "मालिक की रिपोर्ट")
+        await st.click('[data-t="more"]'); ok("डायरेक्टर तक पहुँचे" in await st.inner_text("#pg"), "मालिक की रिपोर्ट"); await st.click('[data-a="bills"]'); t = await st.inner_text("#sheet"); ok("4521" in t and "नकद" in t, "डायरेक्टर: आज के बिल — " + t[:200]); await st.click("#sheet .sx")
         q = await cx.new_page(); await q.goto(B + "qr.html"); await q.wait_for_timeout(500); ok(await q.locator(".c img, .c canvas").count() >= 16, "16 QR कार्ड")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: पूरा बहाव पास")
