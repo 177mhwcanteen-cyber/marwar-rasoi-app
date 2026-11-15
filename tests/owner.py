@@ -138,6 +138,13 @@ async def main():
         ok(await s.evaluate("LS.get('mr_c_cacc',[]).length") == 1, "खाते चढ़े"); await s.fill("#cq", "Test Jawan"); await s.wait_for_timeout(600); await s.click('[data-co="9000011111"]'); await s.wait_for_timeout(200)
         t = await s.inner_text("#sheet"); h = await s.get_attribute('a[href*="Username%3A%209000011111"]', "href")
         ok("abc234" in t and "5.0" in t and h and "Password%3A%20abc234" in h and "Jai%20Hind%20Test%20Jawan%20ji" in h, "कार्ड पर पासवर्ड + खाते वाला संदेश"); await s.screenshot(path=SH + "/rasoi-acc.png"); await s.click("#sheet .sx")
+        # 🔄 ऐप के नए ऑर्डर ग्राहक-खाते में (accSync) · 🔍 TMBill मिलान
+        await s.evaluate("(async()=>{const h=await sha256('mr|9000011111|abc234');const L=LS.get('mr_c_cacc',[]);L.push({id:h,n:'Test Jawan',o:12,sp:5000,hist:[]});LS.set('mr_c_cacc',L);await cbookAdd({id:'oNEW1',phone:'9000011111',name:'Test Jawan',type:'delivery',items:[{id:'rs-kadai-paneer',n:'KADAI PANEER',q:1}],total:250},250)})()")
+        await s.click('[data-a="cust"]'); await s.wait_for_timeout(1200); await s.click("#sheet .sx")
+        ok(await s.evaluate("(async()=>{const h=await sha256('mr|9000011111|abc234');const x=LS.get('mr_c_cacc',[]).find(y=>y.id===h);return x.o===13&&x.hist.length===1&&x.hist[0].it[0].i==='rs-kadai-paneer'})()"), "नया ऑर्डर ग्राहक-खाते में जुड़ा")
+        tp = tdir + "/tm.csv"; open(tp, "w").write("Bill No,Bill Date,Grand Total\n880,15-11-2026,300\n999,15-11-2026,120\n")
+        await s.click('[data-a="bills"]'); await s.set_input_files("#tmf", tp); await s.wait_for_selector("#tmr .sum"); t = await s.inner_text("#tmr")
+        ok("मिल गए" in t and "TMBill में कुल 2 बिल" in t, "TMBill मिलान — " + t[:200]); await s.screenshot(path=SH + "/rasoi-tmbill.png"); await s.click("#sheet .sx")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: डायरेक्टर के औज़ार पास")
 asyncio.run(main())

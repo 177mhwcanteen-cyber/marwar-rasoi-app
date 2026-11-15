@@ -8,8 +8,19 @@ async function cbookAdd(o, amt) { const m = String(o.phone || "").replace(/\D/g,
   let c = null; try { c = FS_ON ? await fsGet("cbook", m) : (await COL("cbook").list()).find(x => x.id === m) } catch (e) { }
   c = c || { m, o: 0, sp: 0, f: dkey(), dc: {}, ty: {} }; const dc = Object.assign({}, c.dc || {}), ty = Object.assign({}, c.ty || {});
   (o.items || []).forEach(i => { const k = String(i.n || "").slice(0, 40); if (k) dc[k] = (dc[k] || 0) + (+i.q || 1) }); ty[o.type || "delivery"] = (ty[o.type || "delivery"] || 0) + 1;
-  const top = Object.entries(dc).sort((a, b) => b[1] - a[1]).slice(0, 25);
-  await COL("cbook").set(m, { m, n: o.name || c.n || "", ad: o.addr || c.ad || "", o: (c.o || 0) + 1, sp: Math.round((c.sp || 0) + (+amt || +o.total || 0)), f: c.f || dkey(), l: dkey(), dc: Object.fromEntries(top), ty }) }
+  const top = Object.entries(dc).sort((a, b) => b[1] - a[1]).slice(0, 25), h = [{ oid: o.id || "", d: dkey(), a: Math.round(+amt || +o.total || 0), it: (o.items || []).slice(0, 20).map(i => ({ n: String(i.n || "").slice(0, 40), q: +i.q || 1, i: i.id || "" })) }].concat(c.h || []).slice(0, 15);
+  await COL("cbook").set(m, { m, n: o.name || c.n || "", ad: o.addr || c.ad || "", o: (c.o || 0) + 1, sp: Math.round((c.sp || 0) + (+amt || +o.total || 0)), f: c.f || dkey(), l: dkey(), dc: Object.fromEntries(top), ty, h }) }
+/* 🔄 ग्राहक-खाते ताज़ा (डायरेक्टर का फोन, ग्राहक-सूची खुलते ही): ऐप से आए नए ऑर्डर (cbook.h) उस ग्राहक के cacc में जोड़ो — ग्राहक को अपने नए ऑर्डर भी दिखें
+   (पासवर्ड सिर्फ़ डायरेक्टर की सूची में है, इसलिए यही फोन कर सकता है)। cacc.sy = जोड़े हुए ऑर्डर-id। */
+const sha256 = async t => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map(x => x.toString(16).padStart(2, "0")).join("");
+async function accSync() { if (!ME || ME.role !== "owner" || !crypto.subtle) return 0; let n = 0;
+  const B = await COL("cbook").list().catch(() => []);
+  for (const b of B) { const c = CU.by[b.m]; if (!c || !c.pw || !(b.h || []).length) continue;
+    const h = await sha256("mr|" + c.m + "|" + c.pw); let a = null; try { a = FS_ON ? await fsGet("cacc", h) : (LS.get("mr_c_cacc", []).find(x => x.id === h) || null) } catch (e) { } if (!a) continue;
+    const sy = a.sy || [], nw = b.h.filter(x => x.oid && !sy.includes(x.oid)); if (!nw.length) continue;
+    const p = { hist: nw.map(x => ({ d: x.d, a: x.a, it: x.it })).concat(a.hist || []).slice(0, 30), o: (a.o || 0) + nw.length, sp: (a.sp || 0) + nw.reduce((t, x) => t + (x.a || 0), 0), l: nw[0].d, sy: sy.concat(nw.map(x => x.oid)).slice(-60), ts: now() };
+    try { if (FS_ON) await COL("cacc").set(h, p); else { const L = LS.get("mr_c_cacc", []), x = L.find(y => y.id === h); Object.assign(x, p); LS.set("mr_c_cacc", L) } n++ } catch (e) { } }
+  return n }
 function csvRows(t) { const R = []; let r = [], c = "", q = false; t = t.replace(/^﻿/, "");
   for (let i = 0; i < t.length; i++) { const ch = t[i]; if (q) { if (ch === '"') { if (t[i + 1] === '"') { c += '"'; i++ } else q = false } else c += ch } else if (ch === '"') q = true; else if (ch === ",") { r.push(c); c = "" } else if (ch === "\n" || ch === "\r") { if (ch === "\r" && t[i + 1] === "\n") i++; r.push(c); c = ""; if (r.some(x => x)) R.push(r); r = [] } else c += ch }
   r.push(c); if (r.some(x => x)) R.push(r); return R }
@@ -52,7 +63,8 @@ function custMsg(c, kind) { const h = new Date().getHours(), gr = h < 12 ? "Good
     : `${hi} Aap hamare Royal Customer hain - aapke support ke liye dil se dhanyavaad. Nayi suvidha: khana, grocery aur sabzi ab ghar baithe mangwayein, free delivery: ${link} . Apna sujhav zaroor batayein.` }
 async function custSheet() {
   const b = sheet(`<h3>👥 ग्राहक</h3><div id="cl" class="empty">⏳…</div>`); let F = "win", Q = "", open = "", U = ""; const OWN = ME.role === "owner";
-  try { await custLoad(true) } catch (e) { return $("#cl", b).innerHTML = "नहीं खुला — Firebase के नए नियम (v4) Publish करें, फिर दोबारा खोलें।" }
+  try { await custLoad(true) } catch (e) { return $("#cl", b).innerHTML = "नहीं खुला — Firebase के नए नियम (v9) Publish करें, फिर दोबारा खोलें।" }
+  if (OWN) accSync().then(n => n && toast("🔄 " + n + " ग्राहकों के खाते में नए ऑर्डर जुड़े")).catch(() => 0);
   const up = !OWN ? "" : `<label class="btn gh sm" style="display:inline-block">📂 ${CU.rows.length ? "नई फ़ाइल चढ़ाएँ (ताज़ा करें)" : "ग्राहक-फ़ाइल (CSV) चुनें"}<input type="file" id="cf" accept=".csv,text/csv,text/comma-separated-values" hidden></label> <label class="btn gh sm" style="display:inline-block">🔐 ग्राहक-खाते (JSON) चढ़ाएँ<input type="file" id="caf" accept=".json,application/json" hidden></label><div class="err" id="cerr"></div>`;
   const SEG = { win: ["😴 वापस बुलाएँ", c => c.o >= 4 && cDays(c) >= 30], top: ["🌟 यूनिट के बेस्ट", c => c.o >= 6], vip: ["👑 VIP", c => c.o >= 10], reg: ["🔁 रेगुलर", c => c.o >= 4 && c.o < 10], ud: ["💰 उधारी", c => c.ud > 0], name: ["❓ नाम पूछना", c => !c.pk && c.o >= 2], nw: ["🆕 नए", c => c.o === 1 && cDays(c) <= 14], all: ["सब", c => true] };
   const show = () => { const R = CU.rows; if (!R.length) return $("#cl", b).outerHTML = !OWN ? `<div id="cl" class="empty">अभी ग्राहक-सूची नहीं चढ़ी — विक्रम जी चढ़ाएँगे।</div>` : `<div id="cl"><p class="hint">Claude की बनाई <b>Marwar-Rasoi-Customer-Biodata.csv</b> फ़ाइल यहाँ चुनें। डेटा सिर्फ़ आपके Firebase में जाएगा — सिर्फ़ डायरेक्टर देख सकता है।</p>${up}</div>`;

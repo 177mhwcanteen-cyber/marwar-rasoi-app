@@ -12,7 +12,7 @@ const REM_SEED = [
 const RM = { conf: null, ts: 0 };
 async function remLoad(force) { if (!force && RM.conf && now() - RM.ts < 60000) return RM.conf; const c = (await COL("conf").list().catch(() => [])).find(x => x.id === "remind"); RM.conf = c || { list: [] }; RM.ts = now(); return RM.conf }
 const remSave = p => COL("conf").set("remind", p).then(() => { Object.assign(RM.conf, p); RM.ts = now() });
-const tonePlay = t => { try { (RM.au = RM.au || new Audio()).src = "tones/" + t + ".wav"; RM.au.play() } catch (e) { } };
+const tonePlay = t => { try { (RM.au = RM.au || new Audio()).src = "tones/" + t + ".wav"; RM.au.play().catch(() => 0) } catch (e) { } };
 
 async function remindSheet(tab) {
   const b = sheet(`<h3>⏰ रिमाइंडर</h3><div id="rm" class="empty">⏳…</div>`), own = ME.role === "owner", mg = own || ME.role === "manager";
