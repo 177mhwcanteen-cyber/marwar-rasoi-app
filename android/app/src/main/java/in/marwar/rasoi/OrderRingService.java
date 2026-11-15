@@ -184,6 +184,7 @@ public class OrderRingService extends Service {
             try { if (prefs(OrderRingService.this).getBoolean("orders", true)) poll(); } catch (Exception e) { lastErr = String.valueOf(e.getMessage()); }
             try { remind(); } catch (Exception ignore) { }
             try { talk(); } catch (Exception ignore) { }
+            try { health(); } catch (Exception ignore) { }
             h.postDelayed(this, every() * 1000L);
         }
     };
@@ -310,6 +311,47 @@ public class OrderRingService extends Service {
         try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NID_ALARM); } catch (Exception ignore) { }
     }
 
+    /* ───────── 📲 फोन का हाल → dev/{uid} (हर 10 मिनट) — डायरेक्टर देखे किसके फोन में क्या बंद है / कब से नेट नहीं ───────── */
+    static com.getcapacitor.JSObject perms(Context c) {
+        com.getcapacitor.JSObject o = new com.getcapacitor.JSObject();
+        boolean g = true;
+        try { if (Build.VERSION.SDK_INT >= 33) g = c.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED; } catch (Exception ignore) { }
+        try { NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE); if (Build.VERSION.SDK_INT >= 24 && !nm.areNotificationsEnabled()) g = false; } catch (Exception ignore) { }
+        o.put("notif", g);
+        boolean loc = false, mic = false, cam = false;
+        try { loc = c.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED; } catch (Exception ignore) { }
+        try { mic = c.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED; } catch (Exception ignore) { }
+        try { cam = c.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED; } catch (Exception ignore) { }
+        o.put("loc", loc); o.put("mic", mic); o.put("cam", cam);
+        boolean gps = true;
+        try { if (Build.VERSION.SDK_INT >= 28) gps = ((LocationManager) c.getSystemService(Context.LOCATION_SERVICE)).isLocationEnabled(); } catch (Exception ignore) { }
+        o.put("gps", gps);
+        boolean bat = true;
+        try { bat = ((PowerManager) c.getSystemService(Context.POWER_SERVICE)).isIgnoringBatteryOptimizations(c.getPackageName()); } catch (Exception ignore) { }
+        o.put("batt", bat);
+        boolean fsi = true;
+        try { if (Build.VERSION.SDK_INT >= 34) fsi = ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).canUseFullScreenIntent(); } catch (Exception ignore) { }
+        o.put("fsi", fsi);
+        int lvl = -1;
+        try { lvl = ((android.os.BatteryManager) c.getSystemService(Context.BATTERY_SERVICE)).getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY); } catch (Exception ignore) { }
+        o.put("bl", lvl);
+        return o;
+    }
+
+    private long hLast = 0;
+    private void health() throws Exception {
+        long now = System.currentTimeMillis();
+        if (now - hLast < 10 * 60000L || !Fs.ready(this)) return;
+        hLast = now;
+        com.getcapacitor.JSObject o = perms(this);
+        JSONObject f = new JSONObject().put("name", Fs.str(Fs.name(this))).put("role", Fs.str(prefs(this).getString("role", ""))).put("ts", Fs.intv(now))
+                .put("track", Fs.bool(TrackService.lastUp > 0 && now - TrackService.lastUp < 30 * 60000L)).put("model", Fs.str(Build.MANUFACTURER + " " + Build.MODEL));
+        for (String k : new String[]{"notif", "loc", "mic", "cam", "gps", "batt", "fsi"}) f.put(k, Fs.bool(o.optBoolean(k, false)));
+        f.put("bl", Fs.intv(o.optInt("bl", -1)));
+        JSONArray w = new JSONArray().put(new JSONObject().put("update", new JSONObject().put("name", Fs.docPath(this, "dev/" + Fs.uid(this))).put("fields", f)));
+        Fs.commit(this, w);
+    }
+
     /* ───────── 🎙️ वॉकी-टॉकी: नए talk/* (अपने नहीं) — बिना छुए बजे, स्क्रीन बंद हो तब भी ───────── */
     private MediaPlayer tmp;
     private void talk() throws Exception {
@@ -331,6 +373,8 @@ public class OrderRingService extends Service {
             try { ts = Long.parseLong(sv(f, "ts").split("\\.")[0]); } catch (Exception ignore) { }
             if (ts > last) { last = ts; p.edit().putLong("tklast", ts).apply(); }
             if (me.length() > 0 && me.equals(sv(f, "uid"))) continue;
+            String to = sv(f, "to"); // "" = सबको · "u:<uid>" = सिर्फ़ उसको · "r:<पद>" = उस पद वालों को
+            if (to.length() > 0 && !to.equals("u:" + me) && !to.equals("r:" + prefs(this).getString("role", ""))) continue;
             String a = sv(f, "a");
             if (a.length() < 100 || System.currentTimeMillis() - ts > 10 * 60000L) continue;
             playTalk(a, sv(f, "mt"), sv(f, "by"));

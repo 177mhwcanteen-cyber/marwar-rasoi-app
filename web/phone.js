@@ -1,0 +1,20 @@
+/* मारवाड़ रसोई — 📲 फोन की तैयारी + 📱 टीम के फोन (15-11-2026)
+   Android किसी ऐप को खुद इजाज़त लेने नहीं देता — पर लॉगिन के बाद यह शीट एक-एक करके सब इजाज़तें माँगती है (साथी सिर्फ़ "Allow" दबाए, एक बार)।
+   फिर APK (OrderRingService.health) हर 10 मिनट dev/{uid} में हाल लिखता है — डायरेक्टर देखें किसका क्या बंद है / कब से नेट नहीं; दोबारा माँगने को फोन पर यही शीट खुलती है। */
+const PERM = [["notif", "🔔", "सूचना (घंटी/रिमाइंडर)"], ["loc", "📍", "लोकेशन"], ["gps", "🛰️", "GPS चालू"], ["mic", "🎙️", "माइक (वॉकी-टॉकी)"], ["cam", "📷", "कैमरा (स्कैन)"], ["batt", "🔋", "बैटरी-बचत से छूट"], ["fsi", "📱", "लॉक-स्क्रीन पर पूरी स्क्रीन"]];
+const permNeed = r => r !== "owner" ? PERM : PERM.filter(p => p[0] !== "loc" && p[0] !== "gps");
+async function phoneSetup(auto) { const P = NAT(); if (!P || !P.permAll) return auto ? 0 : toast("इसके लिए नई APK डालें");
+  let S = await P.permAll().catch(() => null); if (!S) return; const miss = () => permNeed(ME.role).filter(p => !S[p[0]]);
+  if (auto && (!miss().length || LS.get("mr_ps_day", "") === dkey())) return; LS.set("mr_ps_day", dkey());
+  const b = sheet(`<h3>📲 फोन की तैयारी — एक बार</h3><p class="hint">ऐप ठीक चले इसके लिए नीचे सब ✅ होने चाहिए। "सब ठीक करें" दबाएँ और हर बार <b>Allow / अनुमति दें</b> चुनें। लोकेशन में <b>"हर समय / Allow all the time"</b> चुनें।</p><div id="psl"></div><button class="btn ok big" id="psgo">⚡ सब ठीक करें</button>`);
+  const show = () => $("#psl", b).innerHTML = permNeed(ME.role).map(p => `<button class="psr ${S[p[0]] ? "ok" : ""}" data-ps="${p[0]}"><i>${p[1]}</i><span>${p[2]}</span><b>${S[p[0]] ? "✅" : "❌ ठीक करें"}</b></button>`).join("") + (miss().length ? "" : `<div class="empty">✅ फोन तैयार है — धन्यवाद!</div>`);
+  const fix = async k => { try { if (["notif", "loc", "mic", "cam"].includes(k)) S = await P.permAsk({ what: k }); else if (k === "batt") await P.ringBattery(); else if (k === "fsi") await P.ringSettings({ what: "fsi" }); else if (k === "gps") await P.ringSettings({ what: "gps" }).catch(() => toast("सेटिंग में Location चालू करें")) } catch (e) { } };
+  show(); b.onclick = async e => { const t = e.target.closest("[data-ps],#psgo"); if (!t) return; if (t.dataset.ps) await fix(t.dataset.ps); else for (const p of miss()) { await fix(p[0]); if (["batt", "fsi", "gps"].includes(p[0])) break } S = await P.permAll().catch(() => S); show() };
+  document.addEventListener("visibilitychange", async () => { if (!document.hidden && $("#psl")) { S = await P.permAll().catch(() => S); show() } }) }
+/* 📱 डायरेक्टर: टीम के फोन का हाल */
+async function devSheet() { const b = sheet(`<h3>📱 टीम के फोन</h3><div id="dvl" class="empty">⏳…</div>`); let L = [];
+  try { L = (await COL("dev").list()).sort((a, c) => c.ts - a.ts) } catch (e) { return $("#dvl", b).textContent = "नहीं खुला — Firebase के नए नियम (v9) Publish करें" }
+  const ago = t => { const m = Math.round((now() - t) / 60000); return m < 60 ? m + " मिनट पहले" : m < 1440 ? Math.round(m / 60) + " घंटे पहले" : Math.round(m / 1440) + " दिन पहले" };
+  $("#dvl", b).outerHTML = `<div id="dvl"><p class="hint">हर फोन (नई APK) 10 मिनट में अपना हाल भेजता है। 30 मिनट से पुराना = फोन बंद / नेट बंद / ऐप हटाया। लाल ❌ = वह इजाज़त बंद — उस साथी के फोन में ☰ और → 📲 फोन की तैयारी खुलवाएँ।</p>
+  ${L.map(d => { const old = now() - d.ts > 30 * 60000, bad = permNeed(d.role).filter(p => d[p[0]] === false); return `<div class="oc ${old || bad.length ? "late" : ""}" style="--sc:${old ? "#dc2626" : bad.length ? "#b45309" : "#15803d"}"><div class="r1"><span class="w">${E(d.name || "?")} <small>${E(roleHi(d.role || ""))}</small></span><span class="t">${old ? "🔴 " : "🟢 "}${ago(d.ts)}</span></div>
+    <div class="chips" style="flex-wrap:wrap;margin-top:4px">${permNeed(d.role).map(p => `<span class="${d[p[0]] === false ? "bad" : ""}">${p[1]} ${d[p[0]] === false ? "❌" : "✅"}</span>`).join("")}${d.bl >= 0 ? `<span>🔋 ${d.bl}%</span>` : ""}${d.track === false && d.role !== "owner" ? `<span class="bad">🗺️ लोकेशन नहीं जा रही</span>` : ""}</div><div class="who">${E(d.model || "")}</div></div>` }).join("") || `<div class="empty">अभी किसी फोन ने हाल नहीं भेजा — नई APK डालकर लॉगिन करें</div>`}</div>` }

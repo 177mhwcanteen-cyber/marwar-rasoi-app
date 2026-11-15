@@ -48,7 +48,9 @@ import java.util.UUID;
     permissions = {
         @Permission(alias = "bt", strings = { Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN }),
         @Permission(alias = "loc", strings = { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION }),
-        @Permission(alias = "notif", strings = { Manifest.permission.POST_NOTIFICATIONS })
+        @Permission(alias = "notif", strings = { Manifest.permission.POST_NOTIFICATIONS }),
+        @Permission(alias = "mic", strings = { Manifest.permission.RECORD_AUDIO }),
+        @Permission(alias = "cam", strings = { Manifest.permission.CAMERA })
     }
 )
 public class BtPrinterPlugin extends Plugin {
@@ -375,6 +377,22 @@ public class BtPrinterPlugin extends Plugin {
     }
 
     /* ================= 🔔 ऑर्डर की घंटी (ऐप बंद हो तब भी) ================= */
+    /* 📲 फोन की तैयारी (15-11-2026): एक बार में सब इजाज़तें — JS क्रम से पूछता है; हाल डायरेक्टर को dev/{uid} से (OrderRingService.health) */
+    @PluginMethod
+    public void permAll(PluginCall call) { call.resolve(OrderRingService.perms(getContext())); }
+
+    @PluginMethod
+    public void permAsk(PluginCall call) {
+        String w = call.getString("what", "");
+        if (("notif".equals(w) && Build.VERSION.SDK_INT >= 33) || "loc".equals(w) || "mic".equals(w) || "cam".equals(w)) {
+            if (getPermissionState(w) != PermissionState.GRANTED) { requestPermissionForAlias(w, call, "afterPermAsk"); return; }
+        }
+        call.resolve(OrderRingService.perms(getContext()));
+    }
+
+    @PermissionCallback
+    private void afterPermAsk(PluginCall call) { call.resolve(OrderRingService.perms(getContext())); }
+
     private JSObject ringState() {
         Context c = getContext();
         JSObject o = new JSObject();
@@ -525,7 +543,9 @@ public class BtPrinterPlugin extends Plugin {
         String what = call.getString("what", "notif");
         try {
             Intent it;
-            if ("fsi".equals(what) && Build.VERSION.SDK_INT >= 34) {
+            if ("gps".equals(what)) {
+                it = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            } else if ("fsi".equals(what) && Build.VERSION.SDK_INT >= 34) {
                 it = new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + getContext().getPackageName()));
             } else if (Build.VERSION.SDK_INT >= 26) {
                 it = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());

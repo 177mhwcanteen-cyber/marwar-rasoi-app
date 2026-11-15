@@ -120,6 +120,14 @@ async def main():
         await s.click('[data-a="talk"]'); await s.wait_for_selector("#tkb"); ok("दबाए रखकर बोलें" in await s.inner_text("#sheet"), "वॉकी-टॉकी खुला")
         await s.evaluate("COL('talk').add({a:'AAAA'.repeat(40),mt:'audio/webm',d:2.1,by:'स्वरूप सा',uid:'u9',role:'manager'})"); await s.evaluate("tkLoad(true)"); await s.wait_for_timeout(300)
         ok("स्वरूप सा" in await s.inner_text("#tkl") and await s.locator("#tkl [data-tp]").count() == 1, "संदेश सूची में"); await s.screenshot(path=SH + "/rasoi-talk.png"); await s.click("#sheet .sx")
+        # 🎙️ एक साथी को · 📲 फोन की तैयारी (नकली APK) · 📱 टीम के फोन
+        await s.click('[data-a="talk"]'); await s.wait_for_selector('#tkto [data-to="r:manager"]'); await s.click('#tkto [data-to="r:manager"]'); ok(await s.evaluate("TK.to") == "r:manager", "एक पद को चुना"); await s.click("#sheet .sx")
+        await s.evaluate("window.Capacitor={isNativePlatform:()=>true,Plugins:{BtPrinter:{_s:{notif:true,loc:false,gps:true,mic:false,cam:true,batt:true,fsi:true},async permAll(){return Object.assign({},this._s)},async permAsk(o){this._s[o.what]=true;return Object.assign({},this._s)},ringStart:async()=>({}),trackStart:async()=>({}),ringBattery:async()=>({}),ringSettings:async()=>({})}}}")
+        if await s.evaluate("!!NAT()"):
+            await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);LS.set('mr_ps_day','');phoneSetup(true)"); await s.wait_for_selector("#psgo"); ok(await s.locator(".psr:not(.ok)").count() == 2, "2 इजाज़त बंद दिखीं")
+            await s.click("#psgo"); await s.wait_for_timeout(300); ok(await s.locator(".psr:not(.ok)").count() == 0 and "फोन तैयार" in await s.inner_text("#sheet"), "सब ठीक करें"); await s.click("#sheet .sx")
+        await s.evaluate("delete window.Capacitor; ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);COL('dev').add({name:'स्वरूप सा',role:'manager',ts:Date.now()-3600e3,notif:true,loc:false,gps:true,mic:true,cam:true,batt:true,fsi:true,bl:40,track:false});TAB='more';draw()")
+        await s.click('[data-a="devs"]'); await s.wait_for_timeout(300); t = await s.inner_text("#sheet"); ok("स्वरूप सा" in t and "घंटे पहले" in t and "लोकेशन नहीं जा रही" in t, "डायरेक्टर: टीम के फोन — " + t[:200]); await s.screenshot(path=SH + "/rasoi-devs.png"); await s.click("#sheet .sx")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: डायरेक्टर के औज़ार पास")
 asyncio.run(main())
