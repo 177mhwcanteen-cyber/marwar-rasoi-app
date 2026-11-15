@@ -1,5 +1,5 @@
 // मारवाड़ रसोई — Firestore के नियम (विक्रम जी Firebase कंसोल → Firestore → Rules में पूरा चिपकाएँ)
-// v10 (15-11-2026): + cname (ग्राहक का नाम-सुधार)। v9: + rlog (रिमाइंडर का हाल), cbook (ग्राहक-बही), talk (वॉकी-टॉकी), dev (फोन का हाल), cacc (ग्राहक-खाता)। v8: डायरेक्टर = पक्की (verified) ईमेल marwarrasoimr@gmail.com, या पुराना नंबर 9509553600 (मोबाइल + पिन)। लोकेशन सिर्फ़ डायरेक्टर देखे।
+// v11 (15-11-2026): + cfav (बिना पासवर्ड: रेटिंग + पसंद), cname (ग्राहक का नाम-सुधार)। v9: + rlog (रिमाइंडर का हाल), cbook (ग्राहक-बही), talk (वॉकी-टॉकी), dev (फोन का हाल), cacc (ग्राहक-खाता)। v8: डायरेक्टर = पक्की (verified) ईमेल marwarrasoimr@gmail.com, या पुराना नंबर 9509553600 (मोबाइल + पिन)। लोकेशन सिर्फ़ डायरेक्टर देखे।
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
@@ -68,6 +68,8 @@ service cloud.firestore {
     // ✏️ ग्राहक ने अपना बिल का नाम ठीक किया (v10): ग्राहक सिर्फ़ नया बना सके (छोटा, सिर्फ़ 4 खाने); पढ़े/निपटाए सिर्फ़ डायरेक्टर
     match /cname/{id} { allow create: if d().keys().hasOnly(['m', 'n', 'old', 'ts']) && d().m is string && d().m.size() == 10 && d().n is string && d().n.size() >= 2 && d().n.size() <= 60 && d().old is string && d().old.size() <= 60
         && d().ts is int && d().ts > request.time.toMillis() - 300000 && d().ts < request.time.toMillis() + 300000; allow read, update: if owner(); allow delete: if false; }
+    // ⭐ रेटिंग + पसंदीदा डिश (v11): id = sha256("mrf|मोबाइल") — मोबाइल जानने वाला सिर्फ़ यही देखे (नाम/पता/ऑर्डर नहीं); सूची कोई नहीं; लिखे सिर्फ़ डायरेक्टर
+    match /cfav/{h} { allow get: if true; allow list: if false; allow create, update: if owner(); allow delete: if false; }
     // 🎙️ वॉकी-टॉकी (v9): टीम बोले/सुने; बदले-मिटे नहीं
     match /talk/{id} { allow read, create: if staff(); allow update, delete: if false; }
     // ⏰ रिमाइंडर का हाल (v9, 15-11-2026): टीम/APK लिखे (हो गया / टाला / छूटा), डायरेक्टर + मैनेजर पढ़ें; बदले-मिटे नहीं

@@ -59,7 +59,12 @@ const custTag = ph => { const c = CU.by[String(ph || "").replace(/\D/g, "").slic
 async function accUpload(file, say) { const J = JSON.parse(await file.text()), A = (J.acc || []).filter(a => /^[0-9a-f]{64}$/.test(a.h)); if (!A.length) throw new Error("यह खाता-फ़ाइल नहीं लगती");
   for (let i = 0; i < A.length; i += 300) { const W = A.slice(i, i + 300).map(a => { const { h, ...d } = a; return FS_ON ? { update: { name: `projects/${FB.projectId}/databases/(default)/documents/cacc/${h}`, fields: encF(Object.assign(d, { ts: now() })) } } : { h, d } });
     if (FS_ON) await fs("POST", ":commit", { writes: W }); else { const L = LS.get("mr_c_cacc", []); W.forEach(w => L.push(Object.assign({ id: w.h }, w.d))); LS.set("mr_c_cacc", L) }
-    say("⏳ " + Math.min(A.length, i + 300) + " / " + A.length + " खाते…") } return A.length }
+    say("⏳ " + Math.min(A.length, i + 300) + " / " + A.length + " खाते…") }
+  /* ⭐ cfav/sha256("mrf|मोबाइल") = सिर्फ़ रेटिंग + पसंदीदा डिश — बिना पासवर्ड वाले ग्राहक को ऑर्डर-पेज पर यही दिखे (नियम v11) */
+  const F = (J.fav || []).filter(a => /^[0-9a-f]{64}$/.test(a.h));
+  for (let i = 0; i < F.length; i += 300) { if (FS_ON) await fs("POST", ":commit", { writes: F.slice(i, i + 300).map(a => ({ update: { name: `projects/${FB.projectId}/databases/(default)/documents/cfav/${a.h}`, fields: encF({ rt: a.rt, fav: a.fav || [], ts: now() }) } })) }); else LS.set("mr_c_cfav", F.map(a => Object.assign({ id: a.h }, a)));
+    say("⏳ पसंद " + Math.min(F.length, i + 300) + " / " + F.length + "…") }
+  return A.length }
 /* खाते वाला संदेश (विक्रम जी 15-11: ऊपर नाम नहीं — "Jai Hind, Respected Sir ji"; नाम नीचे "Name in our record"; emoji नहीं, तीनों नंबर, मेन्यू लिंक) */
 function accMsg(c) { const hi = "Jai Hind, Respected Sir ji,", fav = c.d.slice(0, 2).join(", "), link = CFG.homeUrl + "&u=" + c.m;
   return `${hi}\nMarwar Rasoi, Jalipa Cantt se namaskar. ${c.o ? `Aap hamare ${c.tr || "khaas"} customer hain - ${c.o} orders${c.rt ? `, aapki customer rating ${c.rt.toFixed(1)}/5 (${c.tp})` : ""}.` : "Aap hamare khaas dost hain."}

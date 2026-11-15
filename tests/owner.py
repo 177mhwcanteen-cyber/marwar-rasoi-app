@@ -132,10 +132,10 @@ async def main():
         import tempfile, json as _j
         tdir = tempfile.mkdtemp(); csvp = tdir + "/c.csv"; jp = tdir + "/a.json"
         open(csvp, "w", encoding="utf-8").write("Mobile,Customer Name,Name Pakka,Total Orders,Total Spend,Last Order,Fav Dish 1,Unit,Udhaari,Password,Rating,Tier,Top\n9000011111,Test Jawan,Haan,12,5000,2026-11-10,Kadai Paneer,60,0,abc234,5.0,Royal VIP,Top 2% customer\n")
-        open(jp, "w").write(_j.dumps({"v": 1, "acc": [{"h": "a" * 64, "n": "Test Jawan", "o": 12, "rt": 5.0, "hist": [{"d": "2026-11-10", "a": 300, "it": [{"n": "Kadai Paneer", "q": 1, "i": "rs-kadai-paneer"}]}]}]}))
+        open(jp, "w").write(_j.dumps({"v": 1, "acc": [{"h": "a" * 64, "n": "Test Jawan", "o": 12, "rt": 5.0, "hist": [{"d": "2026-11-10", "a": 300, "it": [{"n": "Kadai Paneer", "q": 1, "i": "rs-kadai-paneer"}]}]}], "fav": [{"h": "b" * 64, "rt": 5.0, "fav": [{"n": "Kadai Paneer", "i": "rs-kadai-paneer"}]}]}))
         await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);TAB='more';draw()"); await s.click('[data-a="cust"]'); await s.wait_for_selector("#cf", state="attached")
         await s.set_input_files("#cf", csvp); await s.wait_for_timeout(800); await s.set_input_files("#caf", jp); await s.wait_for_timeout(800)
-        ok(await s.evaluate("LS.get('mr_c_cacc',[]).length") == 1, "खाते चढ़े"); await s.fill("#cq", "Test Jawan"); await s.wait_for_timeout(600); await s.click('[data-co="9000011111"]'); await s.wait_for_timeout(200)
+        ok(await s.evaluate("LS.get('mr_c_cacc',[]).length") == 1 and await s.evaluate("LS.get('mr_c_cfav',[]).length") == 1, "खाते + पसंद चढ़े"); await s.fill("#cq", "Test Jawan"); await s.wait_for_timeout(600); await s.click('[data-co="9000011111"]'); await s.wait_for_timeout(200)
         t = await s.inner_text("#sheet"); h = await s.get_attribute('a[href*="Username%3A%209000011111"]', "href")
         ok("abc234" in t and "5.0" in t and h and "Password%3A%20abc234" in h and "Jai%20Hind%2C%20Respected%20Sir%20ji" in h and "Name%20in%20our%20record%3A%20Test%20Jawan" in h, "कार्ड पर पासवर्ड + खाते वाला संदेश"); await s.screenshot(path=SH + "/rasoi-acc.png"); await s.click("#sheet .sx")
         # 🔄 ऐप के नए ऑर्डर ग्राहक-खाते में (accSync) · 🔍 TMBill मिलान
