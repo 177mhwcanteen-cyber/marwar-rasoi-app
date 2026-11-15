@@ -183,6 +183,7 @@ public class OrderRingService extends Service {
             if (!running) return;
             try { if (prefs(OrderRingService.this).getBoolean("orders", true)) poll(); } catch (Exception e) { lastErr = String.valueOf(e.getMessage()); }
             try { remind(); } catch (Exception ignore) { }
+            try { talk(); } catch (Exception ignore) { }
             h.postDelayed(this, every() * 1000L);
         }
     };
@@ -307,6 +308,55 @@ public class OrderRingService extends Service {
 
     private void cancelAlarm() {
         try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NID_ALARM); } catch (Exception ignore) { }
+    }
+
+    /* ───────── 🎙️ वॉकी-टॉकी: नए talk/* (अपने नहीं) — बिना छुए बजे, स्क्रीन बंद हो तब भी ───────── */
+    private MediaPlayer tmp;
+    private void talk() throws Exception {
+        if (!Fs.ready(this)) return;
+        SharedPreferences p = prefs(this);
+        long last = p.getLong("tklast", 0);
+        if (last == 0) { last = System.currentTimeMillis(); p.edit().putLong("tklast", last).apply(); return; }
+        if (tmp != null) return; // पिछला अभी बज रहा है
+        String q = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"talk\"}],\"where\":{\"fieldFilter\":{\"field\":{\"fieldPath\":\"ts\"},\"op\":\"GREATER_THAN\",\"value\":{\"integerValue\":\"" + last + "\"}}},\"orderBy\":[{\"field\":{\"fieldPath\":\"ts\"}}],\"limit\":3}}";
+        JSONArray arr = new JSONArray(Fs.runQuery(this, q));
+        String me = "";
+        try { me = Fs.uid(this); } catch (Exception ignore) { }
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject d = arr.getJSONObject(i).optJSONObject("document");
+            if (d == null) continue;
+            JSONObject f = d.optJSONObject("fields");
+            if (f == null) continue;
+            long ts = 0;
+            try { ts = Long.parseLong(sv(f, "ts").split("\\.")[0]); } catch (Exception ignore) { }
+            if (ts > last) { last = ts; p.edit().putLong("tklast", ts).apply(); }
+            if (me.length() > 0 && me.equals(sv(f, "uid"))) continue;
+            String a = sv(f, "a");
+            if (a.length() < 100 || System.currentTimeMillis() - ts > 10 * 60000L) continue;
+            playTalk(a, sv(f, "mt"), sv(f, "by"));
+            return; // एक बार में एक; अगला अगले चक्कर में
+        }
+    }
+
+    private void playTalk(String b64, String mt, String by) {
+        try {
+            byte[] raw = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            java.io.File fl = new java.io.File(getCacheDir(), "talk." + (mt.contains("mp4") ? "m4a" : mt.contains("ogg") ? "ogg" : "webm"));
+            java.io.FileOutputStream os = new java.io.FileOutputStream(fl);
+            os.write(raw);
+            os.close();
+            Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_REM) : new Notification.Builder(this);
+            b.setContentTitle("🎙️ " + (by.length() > 0 ? by : "टीम") + " का संदेश").setContentText("वॉकी-टॉकी — ऐप में दोबारा सुन सकते हैं")
+                    .setSmallIcon(R.mipmap.ic_launcher).setAutoCancel(true).setContentIntent(openApp(8, false)).setPriority(Notification.PRIORITY_HIGH);
+            try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 1, b.build()); } catch (Exception ignore) { }
+            tmp = new MediaPlayer();
+            tmp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            tmp.setDataSource(fl.getAbsolutePath());
+            tmp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() { public void onCompletion(MediaPlayer m) { try { m.release(); } catch (Exception ignore) { } tmp = null; } });
+            tmp.prepare();
+            tmp.start();
+            h.postDelayed(new Runnable() { public void run() { try { if (tmp != null) { tmp.release(); tmp = null; } } catch (Exception ignore) { } } }, 30000);
+        } catch (Exception e) { try { if (tmp != null) tmp.release(); } catch (Exception ignore) { } tmp = null; }
     }
 
     /* ───────── ⏰ रिमाइंडर ───────── */

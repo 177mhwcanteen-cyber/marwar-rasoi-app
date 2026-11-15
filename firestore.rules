@@ -1,5 +1,5 @@
 // मारवाड़ रसोई — Firestore के नियम (विक्रम जी Firebase कंसोल → Firestore → Rules में पूरा चिपकाएँ)
-// v9 (15-11-2026): + rlog (रिमाइंडर का हाल), cbook (ग्राहक-बही)। v8: डायरेक्टर = पक्की (verified) ईमेल marwarrasoimr@gmail.com, या पुराना नंबर 9509553600 (मोबाइल + पिन)। लोकेशन सिर्फ़ डायरेक्टर देखे।
+// v9 (15-11-2026): + rlog (रिमाइंडर का हाल), cbook (ग्राहक-बही), talk (वॉकी-टॉकी)। v8: डायरेक्टर = पक्की (verified) ईमेल marwarrasoimr@gmail.com, या पुराना नंबर 9509553600 (मोबाइल + पिन)। लोकेशन सिर्फ़ डायरेक्टर देखे।
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
@@ -61,6 +61,8 @@ service cloud.firestore {
     }
     // 📒 ग्राहक-बही (v9, 15-11-2026): ऑर्डर पूरा करते समय मैनेजर/डायरेक्टर लिखें; पढ़े सिर्फ़ डायरेक्टर (ग्राहक संस्था के — मैनेजर बदलें तब भी)
     match /cbook/{m} { allow get: if mgr(); allow list: if owner(); allow create, update: if mgr(); allow delete: if false; }
+    // 🎙️ वॉकी-टॉकी (v9): टीम बोले/सुने; बदले-मिटे नहीं
+    match /talk/{id} { allow read, create: if staff(); allow update, delete: if false; }
     // ⏰ रिमाइंडर का हाल (v9, 15-11-2026): टीम/APK लिखे (हो गया / टाला / छूटा), डायरेक्टर + मैनेजर पढ़ें; बदले-मिटे नहीं
     match /rlog/{id} { allow create: if staff(); allow read: if mgr(); allow update, delete: if false; }
     // लोकेशन (APK की TrackService): अपना ही लिखे, सिर्फ़ डायरेक्टर पढ़े
