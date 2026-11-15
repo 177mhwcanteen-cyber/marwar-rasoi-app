@@ -128,6 +128,16 @@ async def main():
             await s.click("#psgo"); await s.wait_for_timeout(300); ok(await s.locator(".psr:not(.ok)").count() == 0 and "फोन तैयार" in await s.inner_text("#sheet"), "सब ठीक करें"); await s.click("#sheet .sx")
         await s.evaluate("delete window.Capacitor; ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);COL('dev').add({name:'स्वरूप सा',role:'manager',ts:Date.now()-3600e3,notif:true,loc:false,gps:true,mic:true,cam:true,batt:true,fsi:true,bl:40,track:false});TAB='more';draw()")
         await s.click('[data-a="devs"]'); await s.wait_for_timeout(300); t = await s.inner_text("#sheet"); ok("स्वरूप सा" in t and "घंटे पहले" in t and "लोकेशन नहीं जा रही" in t, "डायरेक्टर: टीम के फोन — " + t[:200]); await s.screenshot(path=SH + "/rasoi-devs.png"); await s.click("#sheet .sx")
+        # 🔐 ग्राहक-खाते: CSV में पासवर्ड/रेटिंग → कार्ड पर + WhatsApp संदेश; JSON → cacc (नकली डेटा)
+        import tempfile, json as _j
+        tdir = tempfile.mkdtemp(); csvp = tdir + "/c.csv"; jp = tdir + "/a.json"
+        open(csvp, "w", encoding="utf-8").write("Mobile,Customer Name,Name Pakka,Total Orders,Total Spend,Last Order,Fav Dish 1,Unit,Udhaari,Password,Rating,Tier,Top\n9000011111,Test Jawan,Haan,12,5000,2026-11-10,Kadai Paneer,60,0,abc234,5.0,Royal VIP,Top 2% customer\n")
+        open(jp, "w").write(_j.dumps({"v": 1, "acc": [{"h": "a" * 64, "n": "Test Jawan", "o": 12, "rt": 5.0, "hist": [{"d": "2026-11-10", "a": 300, "it": [{"n": "Kadai Paneer", "q": 1, "i": "rs-kadai-paneer"}]}]}]}))
+        await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);TAB='more';draw()"); await s.click('[data-a="cust"]'); await s.wait_for_selector("#cf", state="attached")
+        await s.set_input_files("#cf", csvp); await s.wait_for_timeout(800); await s.set_input_files("#caf", jp); await s.wait_for_timeout(800)
+        ok(await s.evaluate("LS.get('mr_c_cacc',[]).length") == 1, "खाते चढ़े"); await s.fill("#cq", "Test Jawan"); await s.wait_for_timeout(600); await s.click('[data-co="9000011111"]'); await s.wait_for_timeout(200)
+        t = await s.inner_text("#sheet"); h = await s.get_attribute('a[href*="Username%3A%209000011111"]', "href")
+        ok("abc234" in t and "5.0" in t and h and "Password%3A%20abc234" in h and "Jai%20Hind%20Test%20Jawan%20ji" in h, "कार्ड पर पासवर्ड + खाते वाला संदेश"); await s.screenshot(path=SH + "/rasoi-acc.png"); await s.click("#sheet .sx")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: डायरेक्टर के औज़ार पास")
 asyncio.run(main())
