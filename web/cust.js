@@ -51,12 +51,12 @@ async function accUpload(file, say) { const J = JSON.parse(await file.text()), A
   for (let i = 0; i < A.length; i += 300) { const W = A.slice(i, i + 300).map(a => { const { h, ...d } = a; return FS_ON ? { update: { name: `projects/${FB.projectId}/databases/(default)/documents/cacc/${h}`, fields: encF(Object.assign(d, { ts: now() })) } } : { h, d } });
     if (FS_ON) await fs("POST", ":commit", { writes: W }); else { const L = LS.get("mr_c_cacc", []); W.forEach(w => L.push(Object.assign({ id: w.h }, w.d))); LS.set("mr_c_cacc", L) }
     say("⏳ " + Math.min(A.length, i + 300) + " / " + A.length + " खाते…") } return A.length }
-/* खाते वाला संदेश (नियम: emoji नहीं, "Jai Hind <नाम> ji", तीनों नंबर, मेन्यू लिंक) */
-function accMsg(c) { const hi = c.pk && c.n ? `Jai Hind ${c.n} ji,` : "Jai Hind Sir,", fav = c.d.slice(0, 2).join(", "), link = CFG.homeUrl + "&u=" + c.m;
+/* खाते वाला संदेश (विक्रम जी 15-11: ऊपर नाम नहीं — "Jai Hind, Respected Sir ji"; नाम नीचे "Name in our record"; emoji नहीं, तीनों नंबर, मेन्यू लिंक) */
+function accMsg(c) { const hi = "Jai Hind, Respected Sir ji,", fav = c.d.slice(0, 2).join(", "), link = CFG.homeUrl + "&u=" + c.m;
   return `${hi}\nMarwar Rasoi, Jalipa Cantt se namaskar. ${c.o ? `Aap hamare ${c.tr || "khaas"} customer hain - ${c.o} orders${c.rt ? `, aapki customer rating ${c.rt.toFixed(1)}/5 (${c.tp})` : ""}.` : "Aap hamare khaas dost hain."}
-\nAapka apna Marwar Rasoi account ab taiyaar hai:\nUsername: ${c.m}\nPassword: ${c.pw}\nLogin karke apne purane orders dekhein aur ek tap mein dobara mangwayein: ${link}${fav ? `\nAapki pasand ${fav} - aaj bhi garam taiyaar.` : ""}\n\nOrder: 8696283600 / 6367183480 / 7665326484\nMenu: https://wa.me/c/916367183480\n- Vikram, Marwar Rasoi` }
+\nAapka apna Marwar Rasoi account ab taiyaar hai:\nUsername: ${c.m}\nPassword: ${c.pw}${c.pk && c.n ? "\nName in our record: " + c.n : ""}\nLogin karke apne purane orders dekhein aur ek tap mein dobara mangwayein: ${link}${fav ? `\nAapki pasand ${fav} - aaj bhi garam taiyaar.` : ""}\n\nOrder: 8696283600 / 6367183480 / 7665326484\nMenu: https://wa.me/c/916367183480\n- Vikram, Marwar Rasoi` }
 /* संदेश: समय के हिसाब से Good morning/afternoon/evening + नाम; छोटा; "Royal Customer"; नई सुविधा (घर बैठे खाना + ग्रोसरी + सब्ज़ी) */
-function custMsg(c, kind) { const h = new Date().getHours(), gr = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening", nm = c.n ? " " + c.n + " ji" : "", link = CFG.homeUrl, fav = c.d.slice(0, 2).join(", "), hi = `${gr}${nm} 🙏 Marwar Rasoi, Jalipa se namaskar.`;
+function custMsg(c, kind) { const h = new Date().getHours(), gr = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening", nm = ", Respected Sir ji", link = CFG.homeUrl, fav = c.d.slice(0, 2).join(", "), hi = `${gr}${nm} 🙏 Marwar Rasoi, Jalipa se namaskar.`;
   /* विक्रम जी 15-11: ग्राहक को उधारी का संदेश कभी नहीं — WhatsApp सिर्फ़ प्रमोशन; वसूली मैनेजर फ़ोन से */
   return kind === "back" ? `${hi} Aap hamare Royal Customer hain, bahut din se aapki yaad aa rahi hai.${fav ? " Aapki pasand " + fav + " aaj bhi taiyaar hai." : ""} Ab khana, grocery aur sabzi ghar baithe mangwayein, free delivery: ${link}`
     : kind === "name" ? `${hi} Aap hamare purane grahak hain - kripya apna naam bata dein taaki agli baar aapka order jaldi lage. Ab ghar baithe order: ${link}`

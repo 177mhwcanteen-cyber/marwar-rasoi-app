@@ -137,7 +137,7 @@ async def main():
         await s.set_input_files("#cf", csvp); await s.wait_for_timeout(800); await s.set_input_files("#caf", jp); await s.wait_for_timeout(800)
         ok(await s.evaluate("LS.get('mr_c_cacc',[]).length") == 1, "खाते चढ़े"); await s.fill("#cq", "Test Jawan"); await s.wait_for_timeout(600); await s.click('[data-co="9000011111"]'); await s.wait_for_timeout(200)
         t = await s.inner_text("#sheet"); h = await s.get_attribute('a[href*="Username%3A%209000011111"]', "href")
-        ok("abc234" in t and "5.0" in t and h and "Password%3A%20abc234" in h and "Jai%20Hind%20Test%20Jawan%20ji" in h, "कार्ड पर पासवर्ड + खाते वाला संदेश"); await s.screenshot(path=SH + "/rasoi-acc.png"); await s.click("#sheet .sx")
+        ok("abc234" in t and "5.0" in t and h and "Password%3A%20abc234" in h and "Jai%20Hind%2C%20Respected%20Sir%20ji" in h and "Name%20in%20our%20record%3A%20Test%20Jawan" in h, "कार्ड पर पासवर्ड + खाते वाला संदेश"); await s.screenshot(path=SH + "/rasoi-acc.png"); await s.click("#sheet .sx")
         # 🔄 ऐप के नए ऑर्डर ग्राहक-खाते में (accSync) · 🔍 TMBill मिलान
         await s.evaluate("(async()=>{const h=await sha256('mr|9000011111|abc234');const L=LS.get('mr_c_cacc',[]);L.push({id:h,n:'Test Jawan',o:12,sp:5000,hist:[]});LS.set('mr_c_cacc',L);await cbookAdd({id:'oNEW1',phone:'9000011111',name:'Test Jawan',type:'delivery',items:[{id:'rs-kadai-paneer',n:'KADAI PANEER',q:1}],total:250},250)})()")
         await s.click('[data-a="cust"]'); await s.wait_for_timeout(1200); await s.click("#sheet .sx")
