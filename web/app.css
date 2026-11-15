@@ -141,3 +141,44 @@ body{font-family:Mukta,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font
 .tkr{display:flex;gap:9px;align-items:center;width:100%;border:0;background:#fff;border-radius:12px;padding:8px 10px;margin-bottom:5px;box-shadow:0 1px 4px rgba(60,30,5,.08);text-align:left;font:inherit}.tkr i{font-style:normal;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#15803d;color:#fff}.tkr.me{background:#fff7ed}.tkr small{color:var(--mut)}
 .psr{display:flex;align-items:center;gap:10px;width:100%;border:0;background:#fff;border-radius:12px;padding:10px;margin-bottom:6px;box-shadow:0 0 0 1.5px #fca5a5;font:inherit;text-align:left}.psr.ok{box-shadow:0 1px 4px rgba(60,30,5,.08)}.psr i{font-style:normal;font-size:22px}.psr span{flex:1;font-weight:700}.psr b{font-size:12.5px;color:#dc2626}.psr.ok b{color:#15803d}
 .chips span.bad{background:#fee2e2;color:#b91c1c}
+
+/* ═══════════ 15-11-2026: नया रूप "iOS" (विक्रम जी: पीला/पुराना हटाओ) — साफ़ स्लेटी पृष्ठभूमि, सफ़ेद कार्ड, काँच जैसी पट्टियाँ, एक ही गहरा लाल रंग ═══════════ */
+:root{--m:#b3122f;--m2:#7d0b20;--g:#e5e5ea;--g2:#1c1c1e;--bg:#f2f2f7;--card:#fff;--ink:#1c1c1e;--mut:#8a8a8e;--line:#e5e5ea;--ok:#1faa59;--sh:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(20,20,40,.06)}
+*{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",Roboto,Mukta,"Noto Sans Devanagari",sans-serif!important;letter-spacing:-.01em}
+body{background:var(--bg);font-size:15px;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+.top{background:rgba(255,255,255,.82);-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);color:var(--ink);border-bottom:.5px solid rgba(0,0,0,.1);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;box-shadow:none}
+.top .lgo{width:38px;height:38px;border-radius:11px;box-shadow:0 2px 8px rgba(179,18,47,.25)}
+.top h1{font-size:19px!important;font-weight:800!important;letter-spacing:-.02em!important;color:var(--ink);text-transform:none}.top small{color:var(--mut)!important;font-weight:500!important;font-size:12px!important}
+.top .me{border:0;background:#f2f2f7;color:var(--m);font-weight:700;padding:7px 12px;font-size:13px}.top .me.upd{background:var(--m);color:#fff}
+.demo{background:#fff8e1;color:#8a6100;font-weight:600;border-radius:0}
+.tabs{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));border-radius:26px;border:.5px solid rgba(0,0,0,.08);background:rgba(255,255,255,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:0 8px 30px rgba(20,20,40,.16);padding:4px 4px;overflow:hidden}
+.tabs button{padding:7px 2px 6px;font-size:10.5px;font-weight:600;color:#8a8a8e;border-radius:20px;background:none!important}.tabs button span{font-size:22px;filter:grayscale(.9) opacity(.75);background:none!important;padding:0!important;border:0!important;box-shadow:none!important}
+.tabs button.on{color:var(--m);background:rgba(179,18,47,.08)!important}.tabs button.on span{filter:none}
+.pg{padding:12px 14px}.h{font-size:20px!important;font-weight:800!important;color:var(--ink)!important;margin:18px 2px 8px;letter-spacing:-.02em}.h small{font-size:13px;font-weight:600;color:var(--mut)}
+.oc,.sum>div,.row,.mt,.rmc,.rmf,.bl,.sline,.tkr,.psr,.hbar,.bars,.stool button,.stiles button,.srcs button,.arow,.crow,.slist button{background:#fff;border:0!important;border-radius:16px;box-shadow:var(--sh)}
+.oc{border-left:0!important;padding:12px 14px;position:relative;overflow:hidden}.oc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--sc,#c7c7cc)}
+.kot{background:#f7f7fa!important;border:0!important;border-radius:12px;padding:8px 10px}.kot .nt{color:#c2410c}
+.btn{border-radius:13px;padding:10px 14px;font-weight:700;background:var(--m);box-shadow:0 2px 8px rgba(179,18,47,.22)}.btn.ok{background:var(--ok);box-shadow:0 2px 8px rgba(31,170,89,.25)}.btn.gh{background:#f2f2f7;color:var(--m);border:0!important;box-shadow:none}.btn.big{padding:14px;border-radius:15px;font-size:16px}.btn.sm{padding:6px 11px;border-radius:10px}
+.sum{gap:9px}.sum>div{padding:12px 6px}.sum b{font-size:22px!important;font-weight:800!important;color:var(--ink)!important;letter-spacing:-.03em}.sum small{color:var(--mut);font-weight:600}
+.in,.msr,.sline input,.sline select{border:0!important;background:#fff;border-radius:12px;box-shadow:inset 0 0 0 1px var(--line)}.in:focus,.msr:focus{outline:0;box-shadow:inset 0 0 0 2px var(--m)}
+.chips button,.vt{border:0!important;background:#fff;box-shadow:var(--sh);font-weight:600;padding:6px 12px}.chips button.on{background:var(--ink)!important;color:#fff}.chips span{background:#f2f2f7!important}
+.seg{background:#e9e9ee;border-radius:11px;padding:2px;border:0!important;gap:2px}.seg button{border:0!important;background:none;border-radius:9px;font-weight:600}.seg button.on{background:#fff!important;color:var(--ink)!important;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.tb{border:0!important;border-radius:18px;box-shadow:var(--sh)}.tb i{color:var(--ink)}.tb.busy{background:#fff5f6}.tb.busy i{color:var(--m)}
+/* ☰ और: आइकन रंगीन चौकोर में */
+.mme{background:linear-gradient(135deg,#1c1c1e,#3a3a3f);border-radius:22px;padding:14px 16px;box-shadow:0 10px 26px rgba(20,20,40,.22)}.mme b{font-size:20px!important;font-weight:800}.mme span{background:rgba(255,255,255,.16);font-weight:600}.mme .row{background:rgba(255,255,255,.12)!important;color:#fff;box-shadow:none;border-radius:12px;font-weight:600}
+.mtg{gap:10px}.mt{padding:12px 4px 10px;min-height:92px;border-radius:20px;gap:3px}.mt i{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:24px;background:#f2f2f7;margin-bottom:3px}
+.mtg .mt:nth-child(6n+1) i{background:#ffe9ec}.mtg .mt:nth-child(6n+2) i{background:#e6f6ec}.mtg .mt:nth-child(6n+3) i{background:#e8f0ff}.mtg .mt:nth-child(6n+4) i{background:#fff3e0}.mtg .mt:nth-child(6n+5) i{background:#f0eaff}.mtg .mt:nth-child(6n) i{background:#e3f6f8}
+.mt span{font-size:12.5px!important;font-weight:600!important;color:var(--ink)}.mt b{font-size:12.5px!important;font-weight:700!important}.mt.st b{font-size:22px!important;font-weight:800!important;color:var(--ink)!important;letter-spacing:-.03em}.mt.st span{color:var(--mut)!important;font-size:11.5px!important}.mt.red b{color:#e0243a!important}
+/* स्टोर */
+.sbig{border-radius:22px;padding:16px 8px;box-shadow:0 8px 20px rgba(20,20,40,.14)}.sbig.in{background:linear-gradient(135deg,#1faa59,#34c759)}.sbig.out{background:linear-gradient(135deg,#ff7a00,#ff9f0a)}
+.stool{gap:8px}.stool button{padding:9px 1px;border-radius:16px;font-weight:600!important}.stiles{gap:9px}.stiles button{border-radius:18px;padding:7px}.stiles button img,.stiles button>i{border-radius:13px;background:#f2f2f7}.stiles button b{color:var(--ok)}
+.srcs button{border-radius:16px;font-weight:600!important}.srcs button.on{background:var(--ink)!important;color:#fff}#sloc button.on{background:var(--ok)!important}
+/* शीट: नीचे से उठती, ऊपर पकड़-पट्टी */
+#sheet .box,#sheet2 .box{background:var(--bg);border-radius:28px 28px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.2)}#sheet .box::before{content:"";display:block;width:38px;height:5px;border-radius:3px;background:#c7c7cc;margin:-4px auto 10px}
+#sheet h3{font-size:22px!important;font-weight:800!important;color:var(--ink)!important;letter-spacing:-.02em}#sheet .sx{background:#e9e9ee;color:#636366;border:0}
+.scrim{background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.hint{color:var(--mut)}.toast{border-radius:16px;background:rgba(28,28,30,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.tgrid button{border:0!important;box-shadow:var(--sh);border-radius:13px;font-weight:600!important}.tgrid button.on{background:var(--ink)!important;color:#fff}
+.bars span i{border-radius:5px 5px 0 0}.hbar i{background:#ffe9ec}.rmc .chips span,.mrt span{background:#f2f2f7!important}
+.mc{border:0!important;border-radius:18px!important;box-shadow:var(--sh);overflow:hidden}.pill{font-weight:700}
+.sum.own>div,.sum>div{background:#fff!important}
