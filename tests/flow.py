@@ -62,7 +62,7 @@ async def main():
         await st.click('[data-t="orders"]'); await st.wait_for_timeout(200); ok(await st.evaluate("BELL.on") is False, "मालिक: ताज़ा ऑर्डर पर घंटी नहीं")
         await st.evaluate("""()=>{const a=DB.all();a[a.length-1].ts=Date.now()-200000;LS.set('mr_orders',a);ALL=a;draw()}"""); await st.wait_for_timeout(200)
         ok(await st.evaluate("BELL.on") is True and await st.locator(".oc.late .esc").count() == 1, "मालिक: 3 मिनट बाद घंटी + लाल कार्ड")
-        await st.click('[data-t="more"]'); ok("मालिक तक पहुँचे" in await st.inner_text("#pg"), "मालिक की रिपोर्ट")
+        await st.click('[data-t="more"]'); ok("डायरेक्टर तक पहुँचे" in await st.inner_text("#pg"), "मालिक की रिपोर्ट")
         q = await cx.new_page(); await q.goto(B + "qr.html"); await q.wait_for_timeout(500); ok(await q.locator(".c img, .c canvas").count() >= 16, "16 QR कार्ड")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: पूरा बहाव पास")
