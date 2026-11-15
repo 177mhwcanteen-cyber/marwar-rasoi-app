@@ -125,7 +125,7 @@ function onAct(e, after) {
     b.onclick = e => { const t = e.target.closest("[data-pm]"); if (t) { PM = t.dataset.pm; $$("#tmp button", b).forEach(x => x.classList.toggle("on", x === t)) } };
     $("#tmo", b).onclick = async () => { const tm = $("#tmn", b).value.trim(), amt = Math.round(+$("#tma", b).value || 0), er = m => $("#tme", b).textContent = m;
       if (!tm) return er("TMBill का बिल नंबर लिखें"); if (!amt) return er("बिल की रकम लिखें"); if (!PM) return er("पैसा कैसे मिला — चुनें");
-      const p = { status: "done", tm, amt, pay: PM, cby: ME.name }; act(id, p);
+      const p = { status: "done", tm, amt, pay: PM, cby: ME.name }; act(id, p); cbookAdd(o, amt).catch(() => 0); /* 📒 ग्राहक-बही */
       if (PM === "cash") COL("galla").add({ t: "in", amt, cat: "नकद बिक्री", who: o.name || where(o).replace(/^\S+ /, ""), note: "TMBill " + tm + " · ऑर्डर से अपने-आप", by: ME.name }).catch(() => toast("गल्ले में नहीं जुड़ा — हाथ से लिखें"));
       closeSheet(); toast(PM === "cash" ? "पूरा ✔ — नकद गल्ले में जुड़ा" : "पूरा ✔"); (after || draw)() }; return true }
   else if (id) act(id, { status: k });

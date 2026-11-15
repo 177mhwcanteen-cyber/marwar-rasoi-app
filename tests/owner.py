@@ -109,6 +109,13 @@ async def main():
         await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);draw()"); await s.click('[data-a="remind"]'); await s.click('[data-rt="log"]'); await s.wait_for_timeout(300)
         t = await s.inner_text("#sheet"); ok("हो गया" in t and "स्वरूप सा" in t and "गैस का सिलेंडर" in t, "डायरेक्टर: आज का हाल"); await s.click("#sheet .sx")
         await s.click('[data-a="bells"]'); ok(await s.locator("[data-bt]").count() == 20, "20 घंटियाँ"); await s.click('[data-bt="t12"]'); await s.click("#bsv"); ok(await s.evaluate("LS.get('mr_tone')") == "t12", "ऑर्डर की घंटी चुनी")
+        # 📒 ग्राहक-बही (चरण G): ऑर्डर पूरा → ग्राहक cbook में → डायरेक्टर की ग्राहक-सूची में "📲 ऐप से नया"
+        await s.evaluate("DB.add({kind:'order',type:'delivery',items:[{id:'x',n:'PANEER TIKKA',q:2,s:150,veg:1}],total:300,by:'customer',name:'सूबेदार हरि सिंह',phone:'9414099999',addr:'Qtr 5/A · Unit 12 RAJRIF',status:'out',log:[]})")
+        await s.evaluate("ME={name:'स्वरूप सा',role:'manager'};LS.set('mr_me',ME);TAB='orders';draw()"); await s.wait_for_timeout(300); await s.locator('.oc [data-a="done"]').last.click()
+        await s.fill("#tmn", "880"); await s.click('[data-pm="qr"]'); await s.click("#tmo"); await s.wait_for_timeout(500)
+        ok(await s.evaluate("COL('cbook').list().then(L => L.find(x => x.id === '9414099999'))") is not None, "ग्राहक-बही में जुड़ा")
+        await s.evaluate("ME={name:'विक्रम जी',role:'owner'};LS.set('mr_me',ME);TAB='more';draw()"); await s.click('[data-a="cust"]'); await s.wait_for_timeout(500); await s.click('[data-cf="all"]'); await s.wait_for_timeout(200)
+        t = await s.inner_text("#sheet"); ok("सूबेदार हरि सिंह" in t and "ऐप से नया" in t, "डायरेक्टर: ऐप वाला ग्राहक सूची में — " + t[:300]); await s.click("#sheet .sx")
         ok(not errs, "JS error: " + "; ".join(errs)); await b.close()
     print("✅ मारवाड़ रसोई: डायरेक्टर के औज़ार पास")
 asyncio.run(main())
