@@ -8,7 +8,7 @@ srv.RequestHandlerClass.log_message = lambda *a: None
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 B = "http://127.0.0.1:8823/"
 OWNER = "9509553600@marwar-rasoi.app"; DIR = "marwarrasoimr@gmail.com"; VER, SENT = set(), []
-USERS, DOCS = {}, {}  # email → {pw, uid} ; "orders/id" → fields
+USERS, DOCS, FAIL = {}, {}, set()  # email → {pw, uid} ; "orders/id" → fields
 def ok(c, m):
     if not c: print("❌", m); os._exit(1)
 def sv(f, k): v = (f or {}).get(k, {}); return v.get("stringValue", v.get("integerValue"))
@@ -34,10 +34,10 @@ async def fake(route):
     if path == ":runQuery":
         col = body["structuredQuery"]["from"][0]["collectionId"]
         if (col == "orders" and not is_staff) or (col == "staff" and not is_owner): return await J([{"error": {"message": "PERMISSION_DENIED"}}], 403)
-        if col == "tkaam" and not is_owner:  # नियम v12: साथी सिर्फ़ em == अपना लॉगिन, और क्वेरी में यही शर्त हो
+        if col in ("tkaam", "tvisit", "tmsg", "tprof") and not is_owner:  # नियम v12/v13: साथी सिर्फ़ em == अपना लॉगिन, और क्वेरी में यही शर्त हो
             w = ((body["structuredQuery"].get("where") or {}).get("fieldFilter") or {})
             if not email or w.get("field", {}).get("fieldPath") != "em" or w.get("value", {}).get("stringValue") != email: return await J([{"error": {"message": "PERMISSION_DENIED"}}], 403)
-            return await J([{"document": {"name": "x/" + k, "fields": f}} for k, f in DOCS.items() if k.startswith("tkaam/") and sv(f, "em") == email] or [{}])
+            return await J([{"document": {"name": "x/" + k, "fields": f}} for k, f in DOCS.items() if k.startswith(col + "/") and sv(f, "em") == email] or [{}])
         return await J([{"document": {"name": "x/" + k, "fields": f}} for k, f in DOCS.items() if k.startswith(col + "/")] or [{}])
     col, _, did = path.strip("/").partition("/")
     if rq.method == "POST":
@@ -49,15 +49,18 @@ async def fake(route):
         if key not in DOCS: return await J({"error": {"message": "NOT_FOUND"}}, 404)
         return await J({"name": "x/" + key, "fields": DOCS[key]})
     if rq.method == "PATCH":
+        if email in FAIL: return await J({"error": {"message": "UNAVAILABLE"}}, 503)
         f = body["fields"]
         if col == "staff":
             if key not in DOCS:
                 if not (is_owner or sv(f, "role") == "pending"): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
             elif not is_owner: return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
-        elif col == "tkaam":
+        elif col in ("tkaam", "tvisit", "tprof", "hello") or (col == "tmsg" and is_owner):
             if not is_owner: return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
+        elif col in ("tvr", "tmsg"):
+            if key in DOCS or not email or sv(f, "em") != email or (col == "tmsg" and sv(f, "fr") != "s") or (col == "tvr" and sv(f, "ans") not in ("pahuncha", "mila", "nahi")): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
         elif col == "tkr":
-            if key in DOCS or not email or sv(f, "em") != email or sv(f, "ans") not in ("done", "gaya", "nahi"): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
+            if key in DOCS or not email or sv(f, "em") != email or sv(f, "ans") not in ("done", "gaya", "nahi", "note", "seen"): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
         elif not is_staff: return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
         DOCS[key] = dict(DOCS.get(key, {}), **f) if "updateMask.fieldPaths" in q else f; return await J({"name": "x/" + key, "fields": DOCS[key]})
     await J({}, 400)
@@ -90,7 +93,7 @@ async def main():
         r = await mg.evaluate("fsSet('tkaam','k9',{em:'x',t:'y'}).then(()=>'लिखा').catch(()=>'रुका')"); ok(r == "रुका", "मैनेजर tkaam नहीं लिख सकता")
         await mg.evaluate("kaamLoad(true).then(()=>draw())"); await mg.wait_for_selector(".tkstrip"); t = await mg.inner_text(".tkstrip"); ok("1 खुले" in t and "ज़रूरी" in t, "मैनेजर की पट्टी: " + t)
         await mg.click(".tkstrip"); await mg.wait_for_selector("#sheet .tk"); t = await mg.inner_text("#sheet"); ok("गैस सिलेंडर" in t and "कपिल" not in t and "लेट" in t, "स्वरूप सा को सिर्फ़ अपना काम: " + t[:200])
-        await mg.click('#sheet [data-tk="done"]'); await mg.wait_for_selector("#sheet details.tkg"); R = [f for k, f in DOCS.items() if k.startswith("tkr/")]
+        await mg.click('#sheet [data-tk="done"]'); await mg.wait_for_selector("#sheet details.tkg"); await mg.wait_for_timeout(400); R = [f for k, f in DOCS.items() if k.startswith("tkr/") and sv(f, "ans") != "seen"]
         ok(len(R) == 1 and sv(R[0], "kid") == "k1" and sv(R[0], "ans") == "done" and sv(R[0], "em") == SW, "स्वरूप सा का जवाब tkr में"); await mg.screenshot(path=SH + "/rasoi-kaam-manager.png"); await mg.click("#sheet .sx")
         kb = await page("kailash"); await kb.goto(B); await kb.wait_for_selector("#fgo"); await kb.fill("#fp", "9414000000"); await kb.fill("#fk", "111111"); await kb.click("#fgo")
         await kb.wait_for_selector("#nm"); await kb.fill("#nm", "कैलाश भाई"); await kb.click("#nmo"); await kb.wait_for_selector("text=मंज़ूरी बाकी")
@@ -98,9 +101,25 @@ async def main():
         ok(sv(DOCS["staff/" + u], "role") == "saathi", "डायरेक्टर ने साथी बनाया"); await ow.click("#sheet .sx")
         await kb.click("text=फिर देखें"); await kb.wait_for_selector(".tk"); t = await kb.inner_text("#pg"); ok("कपिल जी से चेक" in t and "गैस" not in t and "मेरा दिन" in await kb.inner_text("#tabs") and "स्टोर" not in await kb.inner_text("#tabs"), "कैलाश भाई को सिर्फ़ अपना काम, साथी के टैब: " + t[:200])
         r = await kb.evaluate("fsQuery({from:[{collectionId:'orders'}],limit:5}).then(()=> 'खुल गया').catch(e=>'रुका')"); ok(r == "रुका", "साथी को ऑर्डर नहीं")
-        await kb.click('[data-tk="nahi"]'); await kb.wait_for_selector("#kmn"); await kb.click("#kmo"); ok("कारण" in await kb.inner_text("#kme"), "नहीं पर कारण ज़रूरी")
-        await kb.fill("#kmn", "कपिल जी शहर से बाहर"); await kb.click("#kmo"); await kb.wait_for_selector(".tksent"); R = [f for k, f in DOCS.items() if k.startswith("tkr/") and sv(f, "em") == KB]
+        await kb.click('[data-tk="nahi"]'); await kb.wait_for_selector("#kmn"); await kb.click("#kmo"); ok("लिखिए" in await kb.inner_text("#kme"), "नहीं पर कारण ज़रूरी")
+        await kb.fill("#kmn", "कपिल जी शहर से बाहर"); await kb.click("#kmo"); await kb.wait_for_selector(".tksent"); await kb.wait_for_timeout(400); R = [f for k, f in DOCS.items() if k.startswith("tkr/") and sv(f, "em") == KB and sv(f, "ans") != "seen"]
         ok(len(R) == 1 and sv(R[0], "ans") == "nahi" and "शहर से बाहर" in sv(R[0], "note"), "कैलाश भाई का 'नहीं' + कारण"); await kb.screenshot(path=SH + "/rasoi-kaam-saathi.png")
+        ok(any(sv(f, "ans") == "seen" and sv(f, "kid") == "k2" for k, f in DOCS.items() if k.startswith("tkr/")), "👁 देखा अपने-आप गया")
+        # चरण C: आज की विज़िट ऊपर, संदेश, पहुँचा/मिला, ऑफ़लाइन कतार
+        TD = await kb.evaluate("kmToday()")
+        await ow.evaluate(f"""Promise.all([fsSet('tvisit','{TD}_9414000000',{{em:'{KB}',day:'{TD}',n:'कैलाश भाई',v:[{{u:'74 Armd Regt',time:'10:30',meet:[{{n:'Maj Singh',ph:'9876511111'}}],ids:['k2'],note:'चेक लेना'}},{{u:'Station HQ',meet:[]}}],mt:Date.now()}}),
+          fsSet('tmsg','d1',{{em:'{KB}',fr:'d',t:'कैलाश भाई, आज 74 Armd ज़रूर जाइए',at:Date.now(),by:'विक्रम जी'}})])""")
+        await kb.click('[data-tk="ref"]'); await kb.wait_for_selector(".vz"); t = await kb.inner_text("#pg")
+        ok(t.index("आज की विज़िट") < t.index("हमारी टीम के काम") and "74 Armd Regt" in t and "Maj Singh" in t and "ज़रूर जाइए" in t, "विज़िट सबसे ऊपर + संदेश: " + t[:160])
+        await kb.click('.vz [data-a2="pahuncha"]'); await kb.wait_for_timeout(500); await kb.click('.vz [data-a2="mila"]'); await kb.wait_for_timeout(500)
+        V = [f for k, f in DOCS.items() if k.startswith("tvr/")]; ok(sorted(sv(f, "ans") for f in V) == ["mila", "pahuncha"] and all(sv(f, "em") == KB for f in V), "विज़िट: पहुँचा + मिला")
+        await kb.fill("#msgt", "चेक मिल गया, कल जमा करूँगा"); await kb.click('[data-tk="msend"]'); await kb.wait_for_timeout(500)
+        ok(any(sv(f, "fr") == "s" and "चेक मिल गया" in sv(f, "t") for k, f in DOCS.items() if k.startswith("tmsg/")), "साथी का संदेश")
+        FAIL.add(KB); await kb.click('[data-tk="note"]'); await kb.fill("#kmn", "आधा काम हुआ"); await kb.click("#kmo"); await kb.wait_for_timeout(500)
+        ok(await kb.evaluate("LS.get('mr_out',[]).length") == 1 and "भेजना बाकी" in await kb.inner_text("#pg"), "नेट नहीं: कतार में")
+        FAIL.discard(KB); await kb.evaluate("flushOut()"); await kb.wait_for_timeout(500)
+        ok(await kb.evaluate("LS.get('mr_out',[]).length") == 0 and any(sv(f, "ans") == "note" and "आधा" in sv(f, "note") for k, f in DOCS.items() if k.startswith("tkr/")), "नेट आते ही गया")
+        await kb.screenshot(path=SH + "/rasoi-din.png", full_page=True)
         await ow.evaluate("kaamSheet()"); await ow.wait_for_selector("#sheet .tkg"); t = await ow.inner_text("#sheet"); ok("स्वरूप जी" in t and "कैलाश भाई" in t, "डायरेक्टर को सबका हाल: " + t[:200]); await ow.click("#sheet .sx")
         cu = await page("customer"); await cu.goto(B + "t/"); await cu.wait_for_selector(".mc"); ok("Home order" in await cu.inner_text("#tno") and "Free home delivery" in await cu.inner_text("#hero") and "Kitchen starts at 7:15 PM" in await cu.inner_text("#hero"), "घर का ऑर्डर-पेज")
         await cu.click('.mc[data-id="rs-paneer-butter-masala"] .ad'); await cu.click("#bar"); await cu.click("#send"); await cu.wait_for_timeout(200); ok(await cu.locator("#send").is_visible(), "नाम के बिना नहीं जाता")

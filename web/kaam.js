@@ -4,7 +4,7 @@
    हर साथी को सिर्फ़ अपने (नियम v12)। जवाब `tkr/{id}` {kid, em, ans: done|gaya|nahi, note, at, by} → VBE उठाकर मुहर/फ़ॉलो-अप/स्टार।
    कुछ मिटता नहीं। भूमिका `saathi` = रसोई से बाहर के साथी (कैलाश भाई जैसे) — उन्हें सिर्फ़ यही पन्ना दिखे। */
 const KM = { L: [], ts: 0, err: "", busy: false };
-const KANS = { done: ["✅", "हो गया"], gaya: ["🚗", "गया / कर रहे हैं"], nahi: ["❌", "नहीं हुआ"] };
+const KANS = { done: ["✅", "हो गया"], gaya: ["🚗", "गया / कर रहे हैं"], nahi: ["❌", "नहीं हुआ"], note: ["💬", "स्थिति"] };
 const kmEm = () => AUTH.u && AUTH.u.ph ? mail(AUTH.u.ph) : "";
 const kmSent = () => LS.get("mr_tkans", {});
 const kmDay = s => { if (!s) return ""; const d = new Date(s + "T00:00"), t = new Date(today0()), n = Math.round((d - t) / 864e5);
@@ -26,13 +26,15 @@ async function kaamLoad(force) {
 /* एक काम का कार्ड — बड़े बटन, कॉल/WhatsApp, विक्रम जी का "↺ फिर देखें" लाल पट्टी में */
 function kmCard(k, ro) {
   const s = kmSent()[k.id], ph = String(k.ph || "").split(/[ ,]+/).filter(x => /^\d{10}$/.test(x))[0], late = kmLate(k), done = k.st === "done" || k.st === "claim";
-  return `<div class="tk ${k.urgent ? "urg" : ""} ${late ? "late" : ""} ${done ? "dn" : ""}">
+  const fr = typeof isFresh === "function" && isFresh("k" + k.id + (k.rej ? "r" : ""));
+  return `<div class="tk ${k.urgent ? "urg" : ""} ${late ? "late" : ""} ${done ? "dn" : ""} ${fr ? "fl" : ""}">
    <div class="tk1"><b>${k.urgent ? "🚨 " : ""}${E(k.t)}</b><span class="${late ? "red" : ""}">${E(kmDay(k.due))}${k.time ? " · " + E(k.time) : ""}</span></div>
+   ${!ro && !done && typeof dueText === "function" ? `<div class="tk2">${dueText(k) ? `<span class="${late ? "red" : ""}">${dueText(k)}</span>` : ""}${ageText(k) ? `<span>· ${ageText(k)}</span>` : ""}${k.earn ? `<span class="earn">· ये कर देंगे तो ⭐ ${k.earn}</span>` : ""}</div>` : ""}
    ${k.x && k.x !== k.t ? `<small>${E(String(k.x).slice(0, 220))}</small>` : ""}
    <div class="chips">${k.unit ? `<span>🏢 ${E(k.unit)}</span>` : ""}${k.party ? `<span>👤 ${E(k.party)}</span>` : ""}${ro ? `<span>🙋 ${E(k.who || "")}</span>` : ""}</div>
    ${k.rej && k.st === "open" ? `<div class="tkrej">↺ विक्रम जी: अभी पूरा नहीं माना — फिर देखिए</div>` : ""}
    ${k.st === "claim" ? `<div class="tksent">✅ आपने "हो गया" भेजा — विक्रम जी की मुहर बाकी</div>` : k.st === "done" ? `<div class="tksent">✅ पूरा</div>` : s && s.at > (k.mt || 0) - 5000 ? `<div class="tksent">${KANS[s.ans][0]} भेजा: ${KANS[s.ans][1]} · ${hm(s.at)}${s.note ? " — " + E(s.note) : ""}</div>` : ""}
-   ${ro || done ? "" : `<div class="tkb"><button class="btn ok" data-tk="done" data-id="${E(k.id)}">✅ हो गया</button><button class="btn" data-tk="gaya" data-id="${E(k.id)}">🚗 गया</button><button class="btn gh" data-tk="nahi" data-id="${E(k.id)}">❌ नहीं</button></div>`}
+   ${ro || done ? "" : `<div class="tkb"><button class="btn ok" data-tk="done" data-id="${E(k.id)}">✅ हो गया</button><button class="btn" data-tk="gaya" data-id="${E(k.id)}">🚗 गया</button><button class="btn gh" data-tk="nahi" data-id="${E(k.id)}">❌ नहीं</button></div><button class="lnk" data-tk="note" data-id="${E(k.id)}">💬 स्थिति लिखें (क्या किया, कितना बाकी)</button>`}
    ${ph && !ro ? `<div class="tkc"><a class="btn gh sm" href="tel:${ph}">📞 ${E(k.party || ph)}</a><a class="btn gh sm" href="https://wa.me/91${ph}" target="_blank" rel="noopener">💬 WhatsApp</a></div>` : ""}</div>`;
 }
 /* पूरा पन्ना: साथी = अपने खुले काम (ज़रूरी/लेट ऊपर) + पूरे हुए मोड़कर; डायरेक्टर = हर साथी के कितने खुले, नाम दबाओ तो सूची (सिर्फ़ देखना — बदलाव VBE में) */
@@ -56,22 +58,20 @@ async function kaamAns(id, ans, host) {
   const k = KM.L.find(x => x.id === id); if (!k) return;
   const go = async note => {
     const at = now(), rid = id.slice(0, 60) + "_" + at.toString(36), doc = { kid: id, em: kmEm(), ans, at, by: ME.name };
-    if (note) doc.note = note.slice(0, 300);
-    try { if (DB.mode === "fs") await fsSet("tkr", rid, doc); const S = kmSent(); S[id] = { ans, at, note: note || "" }; LS.set("mr_tkans", S);
-      if (ans === "done") { k.st = "claim"; k.mt = at } toast(KANS[ans][0] + " भेज दिया — विक्रम जी को दिखेगा"); kaamDraw(host) }
-    catch (e) { toast("नहीं गया — नेट देखें") } };
-  if (ans !== "nahi") return go("");
-  const b = sheet2(`<div class="sh"><h3>❌ क्यों नहीं हुआ?</h3><p class="hint">${E(k.t)}</p><textarea class="in" id="kmn" rows="3" maxlength="300" placeholder="जैसे: पार्टी फोन नहीं उठा रही / कल जाऊँगा"></textarea><div class="err" id="kme"></div><button class="btn big" id="kmo">भेजें</button> <button class="btn gh" id="kmx">रहने दें</button></div>`);
-  const shut = () => { const w = $("#sheet2"); w && w.remove() };
-  b.querySelector("#kmx").onclick = shut;
-  b.querySelector("#kmo").onclick = () => { const n = b.querySelector("#kmn").value.trim(); if (n.length < 3) return b.querySelector("#kme").textContent = "कारण लिखें"; shut(); go(n) };
+    if (note) doc.note = note.slice(0, 500);
+    const S = kmSent(); S[id] = { ans, at, note: note || "" }; LS.set("mr_tkans", S); if (ans === "done") { k.st = "claim"; k.mt = at }
+    if (DB.mode === "fs") qSend("tkr", rid, doc);
+    toast(ans === "nahi" ? "ठीक है — विक्रम जी को पता चल गया, मिलकर हल करेंगे" : ans === "done" ? "✅ शाबाश! विक्रम जी की मुहर पर ⭐ पक्के" : KANS[ans][0] + " भेज दिया — विक्रम जी को दिखेगा"); if (ans === "done" && typeof burstStars === "function") burstStars(k.earn); kaamDraw(host) };
+  if (ans === "nahi") return noteSheet("❌ क्या रुकावट है?", k.t, "जैसे: पार्टी फोन नहीं उठा रही / कल जाऊँगा", go);
+  if (ans === "note") return noteSheet("💬 स्थिति लिखें", k.t, "क्या किया, कितना बाकी, कब तक", go);
+  go("");
 }
-function kaamDraw(host) { if (host && host.isConnected) host.innerHTML = vKaam(); else if (typeof draw === "function") draw() }
+function kaamDraw(host) { if (host && host.isConnected) host.innerHTML = ME && ME.role !== "owner" && typeof vDin === "function" ? vDin() : vKaam(); else if (ME && ME.role === "saathi") saathiDraw(); else if (typeof draw === "function") draw() }
 /* ☰ और से खुलने वाली शीट (मैनेजर/वेटर/वाइस शेफ/डायरेक्टर) */
 async function kaamSheet() {
   const b = sheet(`<div id="kmh" class="empty">⏳…</div>`); const host = $("#kmh", b); host.className = "";
-  await kaamLoad(true); kaamDraw(host);
-  b.addEventListener("click", e => { const x = e.target.closest("[data-tk]"); if (!x) return; if (x.dataset.tk === "ref") return kaamLoad(true).then(() => kaamDraw(host)); kaamAns(x.dataset.id, x.dataset.tk, host) });
+  await kaamLoad(true); if (ME.role !== "owner") await dinLoad(); kaamDraw(host); if (ME.role !== "owner") dinSeen(); DIN.host = host;
+  b.addEventListener("click", e => { const x = e.target.closest("[data-tk]"); if (!x) return; if (x.dataset.tk === "ref") return Promise.all([kaamLoad(true), dinLoad()]).then(() => kaamDraw(host)); if (["msend", "vz"].includes(x.dataset.tk)) return dinClick(x); kaamAns(x.dataset.id, x.dataset.tk, host) });
 }
 (() => { const st = document.createElement("style"); st.textContent = `
 .tk{background:#fff;border-radius:14px;padding:10px 12px;margin:8px 0;box-shadow:0 1px 3px #0002;border-left:5px solid #b45309}

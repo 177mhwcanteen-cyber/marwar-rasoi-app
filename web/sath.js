@@ -60,8 +60,9 @@ function pinChange() {
 function saathiHome() {
   const tb = $("#tabs"); if (!tb.dataset.sa) { tb.dataset.sa = 1; tb.innerHTML = [["din", "🏠", "मेरा दिन"], ["take", "➕", "ऑर्डर लें"], ["haal", "⭐", "मेरा हाल"], ["more", "☰", "और"]].map(([t, i, l]) => `<button data-t="${t}"><span>${i}</span>${l}</button>`).join("") }
   tb.style.display = ""; if (!["din", "take", "haal", "more"].includes(TAB)) TAB = "din";
-  kaamLoad(true).then(() => TAB === "din" && saathiDraw()).catch(() => 0); clearInterval(KM.iv); KM.iv = setInterval(() => kaamLoad(true).then(() => TAB === "din" && !$("#sheet.open") && !$("#sheet2") && saathiDraw()).catch(() => 0), 60000);
-  const pg = $("#pg"); if (!pg.dataset.km) { pg.dataset.km = 1; pg.addEventListener("click", e => { const x = e.target.closest("[data-tk]"); if (!x || !ME || ME.role !== "saathi") return; e.stopPropagation(); if (x.dataset.tk === "ref") return kaamLoad(true).then(saathiDraw); kaamAns(x.dataset.id, x.dataset.tk, $("#kmh")) }, true) }
+  DIN.host = null; const pull = () => Promise.all([kaamLoad(true), dinLoad()]).then(() => { if (TAB === "din" && !$("#sheet.open") && !$("#sheet2") && !(document.activeElement && document.activeElement.id === "msgt")) { saathiDraw(); dinSeen() } }).catch(() => 0);
+  pull(); clearInterval(KM.iv); KM.iv = setInterval(pull, 30000); flushOut();
+  const pg = $("#pg"); if (!pg.dataset.km) { pg.dataset.km = 1; pg.addEventListener("click", e => { const x = e.target.closest("[data-tk]"); if (!x || !ME || ME.role !== "saathi") return; e.stopPropagation(); dinClick(x) }, true) }
   saathiDraw() }
 function saathiDraw() {
   $("#me").textContent = "👤 " + ME.name; $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === TAB)); const pg = $("#pg");

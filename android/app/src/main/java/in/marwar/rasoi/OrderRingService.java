@@ -108,6 +108,12 @@ public class OrderRingService extends Service {
     private void channels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        try { // 🔔 छोटी "टिक" (iPhone जैसी) — नया काम/संदेश/विज़िट; ऊपर से उतरने वाली सूचना
+            NotificationChannel tc = new NotificationChannel(CH_TICK, "टीम: नया काम / संदेश (टिक)", NotificationManager.IMPORTANCE_HIGH);
+            tc.setSound(Uri.parse("android.resource://" + getPackageName() + "/raw/tick"), new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            tc.enableVibration(true); tc.setVibrationPattern(new long[]{0, 40, 60, 40}); tc.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            nm.createNotificationChannel(tc);
+        } catch (Exception ignore) { }
         NotificationChannel w = new NotificationChannel(CH_WATCH, "ऑर्डर की घंटी चालू", NotificationManager.IMPORTANCE_MIN);
         w.setShowBadge(false);
         nm.createNotificationChannel(w);
@@ -516,55 +522,75 @@ public class OrderRingService extends Service {
         }
     }
 
-    /** 📋 हमारी टीम के काम (16-11-2026): हर 2 मिनट tkaam में इस फोन वाले के खुले काम; नया काम (या विक्रम जी का "↺ फिर देखें") → पूरी स्क्रीन + घंटी।
-     *  रात 11 से सुबह 6 चुप (सुबह पहली जाँच पर बजेगा)। पहली बार सिर्फ़ गिनती याद, घंटी नहीं। */
+    /** 📋 हमारी टीम के काम (16-11-2026, योजना-3 चरण C): हर 60 सेकंड इस फोन वाले के tkaam (खुले) + tmsg (विक्रम जी के) + tvisit;
+     *  नया = छोटी "टिक" + कंपन + ऊपर से उतरने वाली सूचना (6 से.); 🚨 ज़रूरी काम पर ही पूरी स्क्रीन + लंबी घंटी।
+     *  रात 9 – सुबह 7 चुप (सुबह पहली जाँच पर बजेगा)। पहली बार सिर्फ़ याद, आवाज़ नहीं। नेट न हो तो अगली बार — कुछ छूटता नहीं। */
+    static final String CH_TICK = "mr_tick_v1";
     private long kFetch = 0;
+    private JSONArray kq(String col, String em) throws Exception {
+        String q = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"" + col + "\"}],\"where\":{\"fieldFilter\":{\"field\":{\"fieldPath\":\"em\"},\"op\":\"EQUAL\",\"value\":{\"stringValue\":" + JSONObject.quote(em) + "}}},\"limit\":200}}";
+        return new JSONArray(Fs.runQuery(this, q));
+    }
     private void kaam() throws Exception {
         String em = prefs(this).getString("em", "");
         if (em.length() == 0 || !Fs.ready(this)) return;
         long now = System.currentTimeMillis();
-        if (now - kFetch < 120000L) return;
+        if (now - kFetch < 60000L) return;
         kFetch = now;
         int hr = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        boolean night = hr >= 23 || hr < 6;
+        boolean night = hr >= 21 || hr < 7;
         SharedPreferences kp = getSharedPreferences("mr_tk", Context.MODE_PRIVATE);
-        boolean first = !kp.getBoolean("init", false);
+        boolean first = !kp.getBoolean("init2", false);
         if (night && !first) return;
-        String q = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"tkaam\"}],\"where\":{\"fieldFilter\":{\"field\":{\"fieldPath\":\"em\"},\"op\":\"EQUAL\",\"value\":{\"stringValue\":" + JSONObject.quote(em) + "}}},\"limit\":200}}";
-        JSONArray arr = new JSONArray(Fs.runQuery(this, q));
         String seen = kp.getString("seen", ",");
         StringBuilder ns = new StringBuilder(",");
-        String newT = null; int cnt = 0;
-        for (int i = 0; i < arr.length(); i++) {
-            JSONObject d = arr.getJSONObject(i).optJSONObject("document");
-            if (d == null) continue;
-            JSONObject f = d.optJSONObject("fields");
-            if (f == null) continue;
-            Object st = dec(f.optJSONObject("st"));
-            if (st != null && !"open".equals(st) && !"".equals(st)) continue;
-            String nm = d.optString("name", ""), id = nm.substring(nm.lastIndexOf('/') + 1);
-            Object rj = dec(f.optJSONObject("rej")), t = dec(f.optJSONObject("t")), ur = dec(f.optJSONObject("urgent"));
-            boolean rej = Boolean.TRUE.equals(rj) || (rj instanceof Double && (Double) rj > 0);
-            String key = id + (rej ? "~r" : "");
-            ns.append(key).append(",");
-            if (!seen.contains("," + key + ",")) { cnt++; if (newT == null || Boolean.TRUE.equals(ur)) newT = (Boolean.TRUE.equals(ur) ? "🚨 " : "") + (rej ? "↺ फिर देखें: " : "") + (t == null ? "नया काम" : String.valueOf(t)); }
+        String newT = null; int cnt = 0; boolean urgent = false;
+        String[] cols = {"tkaam", "tmsg", "tvisit"};
+        for (String col : cols) {
+            JSONArray arr;
+            try { arr = kq(col, em); } catch (Exception e) { if (col.equals("tkaam")) throw e; continue; }
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject d = arr.getJSONObject(i).optJSONObject("document");
+                if (d == null) continue;
+                JSONObject f = d.optJSONObject("fields");
+                if (f == null) continue;
+                String nm = d.optString("name", ""), id = nm.substring(nm.lastIndexOf('/') + 1), key, txt;
+                boolean ur = false;
+                if (col.equals("tkaam")) {
+                    Object st = dec(f.optJSONObject("st"));
+                    if (st != null && !"open".equals(st) && !"".equals(st)) continue;
+                    Object rj = dec(f.optJSONObject("rej")), t = dec(f.optJSONObject("t"));
+                    boolean rej = Boolean.TRUE.equals(rj) || (rj instanceof Double && (Double) rj > 0);
+                    ur = Boolean.TRUE.equals(dec(f.optJSONObject("urgent")));
+                    key = "k" + id + (rej ? "~r" : "");
+                    txt = (ur ? "🚨 " : "") + (rej ? "↺ फिर देखें: " : "📋 ") + (t == null ? "नया काम" : String.valueOf(t));
+                } else if (col.equals("tmsg")) {
+                    if (!"d".equals(sv(f, "fr"))) continue;
+                    key = "m" + id; txt = "💬 विक्रम जी: " + sv(f, "t");
+                } else {
+                    key = "v" + id + sv(f, "mt"); txt = "🗺️ " + ("".equals(sv(f, "day")) ? "" : sv(f, "day") + " की ") + "विज़िट आ गई";
+                }
+                ns.append(key).append(",");
+                if (!seen.contains("," + key + ",")) { cnt++; if (newT == null || ur) newT = txt; if (ur) urgent = true; }
+            }
         }
-        kp.edit().putString("seen", ns.toString()).putBoolean("init", true).apply();
+        kp.edit().putString("seen", ns.toString()).putBoolean("init2", true).apply();
         if (first || cnt == 0) return;
-        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_REM) : new Notification.Builder(this);
-        String body = newT + (cnt > 1 ? "\n\n+ " + (cnt - 1) + " और नए काम" : "") + "\n\nखोलकर \"✅ हो गया / 🚗 गया / ❌ नहीं\" दबाएँ — विक्रम जी को दिखता है";
-        b.setContentTitle("📋 हमारी टीम का नया काम" + (cnt > 1 ? " (" + cnt + ")" : ""))
+        String body = newT + (cnt > 1 ? "\n+ " + (cnt - 1) + " और" : "");
+        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, urgent ? CH_REM : CH_TICK) : new Notification.Builder(this);
+        b.setContentTitle(urgent ? "🚨 ज़रूरी काम — हमारी टीम" : "हमारी टीम" + (cnt > 1 ? " · " + cnt + " नए" : ""))
                 .setContentText(newT)
                 .setStyle(new Notification.BigTextStyle().bigText(body))
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setCategory(Notification.CATEGORY_ALARM)
-                .setPriority(Notification.PRIORITY_MAX)
+                .setPriority(urgent ? Notification.PRIORITY_MAX : Notification.PRIORITY_HIGH)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setAutoCancel(true)
-                .setContentIntent(openApp(7, false))
-                .setFullScreenIntent(openApp(8, false), true);
+                .setContentIntent(openApp(7, false));
+        if (urgent) b.setCategory(Notification.CATEGORY_ALARM).setFullScreenIntent(openApp(8, false), true);
+        else b.setCategory(Notification.CATEGORY_MESSAGE).setTimeoutAfter(6 * 3600000L);
         try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 1, b.build()); } catch (Exception ignore) { }
-        remSound("t11");
+        if (urgent) remSound("t11");
+        else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) { try { int rid = getResources().getIdentifier("tick", "raw", getPackageName()); if (rid != 0) MediaPlayer.create(this, rid).start(); } catch (Exception ignore) { } }
     }
 
     private void fire(String key) {

@@ -142,6 +142,7 @@ public class TrackService extends Service implements LocationListener {
         if (gps) lastFix = now;
         // 45 सेकंड की खिड़की में सबसे सटीक रीडिंग ही दर्ज (दाएँ-बाएँ उछाल कम)
         if (best == null || (l.hasAccuracy() && l.getAccuracy() < best.getAccuracy())) best = l;
+        { int hh = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY); if (hh < 6 || hh >= 23) return; } // 16-11 विक्रम जी: ड्यूटी सुबह 6 – रात 11, हर दिन
         if (now - lastSaved < 45000L) return;
         lastSaved = now;
         Location b = best; best = null;
