@@ -183,6 +183,7 @@ public class OrderRingService extends Service {
             if (!running) return;
             try { if (prefs(OrderRingService.this).getBoolean("orders", true)) poll(); } catch (Exception e) { lastErr = String.valueOf(e.getMessage()); }
             try { remind(); } catch (Exception ignore) { }
+            try { kaam(); } catch (Exception ignore) { }
             try { talk(); } catch (Exception ignore) { }
             try { health(); } catch (Exception ignore) { }
             h.postDelayed(this, every() * 1000L);
@@ -509,6 +510,57 @@ public class OrderRingService extends Service {
                 return;
             }
         }
+    }
+
+    /** 📋 हमारी टीम के काम (16-11-2026): हर 2 मिनट tkaam में इस फोन वाले के खुले काम; नया काम (या विक्रम जी का "↺ फिर देखें") → पूरी स्क्रीन + घंटी।
+     *  रात 11 से सुबह 6 चुप (सुबह पहली जाँच पर बजेगा)। पहली बार सिर्फ़ गिनती याद, घंटी नहीं। */
+    private long kFetch = 0;
+    private void kaam() throws Exception {
+        String em = prefs(this).getString("em", "");
+        if (em.length() == 0 || !Fs.ready(this)) return;
+        long now = System.currentTimeMillis();
+        if (now - kFetch < 120000L) return;
+        kFetch = now;
+        int hr = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        boolean night = hr >= 23 || hr < 6;
+        SharedPreferences kp = getSharedPreferences("mr_tk", Context.MODE_PRIVATE);
+        boolean first = !kp.getBoolean("init", false);
+        if (night && !first) return;
+        String q = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"tkaam\"}],\"where\":{\"fieldFilter\":{\"field\":{\"fieldPath\":\"em\"},\"op\":\"EQUAL\",\"value\":{\"stringValue\":" + JSONObject.quote(em) + "}}},\"limit\":200}}";
+        JSONArray arr = new JSONArray(Fs.runQuery(this, q));
+        String seen = kp.getString("seen", ",");
+        StringBuilder ns = new StringBuilder(",");
+        String newT = null; int cnt = 0;
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject d = arr.getJSONObject(i).optJSONObject("document");
+            if (d == null) continue;
+            JSONObject f = d.optJSONObject("fields");
+            if (f == null) continue;
+            Object st = dec(f.optJSONObject("st"));
+            if (st != null && !"open".equals(st) && !"".equals(st)) continue;
+            String nm = d.optString("name", ""), id = nm.substring(nm.lastIndexOf('/') + 1);
+            Object rj = dec(f.optJSONObject("rej")), t = dec(f.optJSONObject("t")), ur = dec(f.optJSONObject("urgent"));
+            boolean rej = Boolean.TRUE.equals(rj) || (rj instanceof Double && (Double) rj > 0);
+            String key = id + (rej ? "~r" : "");
+            ns.append(key).append(",");
+            if (!seen.contains("," + key + ",")) { cnt++; if (newT == null || Boolean.TRUE.equals(ur)) newT = (Boolean.TRUE.equals(ur) ? "🚨 " : "") + (rej ? "↺ फिर देखें: " : "") + (t == null ? "नया काम" : String.valueOf(t)); }
+        }
+        kp.edit().putString("seen", ns.toString()).putBoolean("init", true).apply();
+        if (first || cnt == 0) return;
+        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_REM) : new Notification.Builder(this);
+        String body = newT + (cnt > 1 ? "\n\n+ " + (cnt - 1) + " और नए काम" : "") + "\n\nखोलकर \"✅ हो गया / 🚗 गया / ❌ नहीं\" दबाएँ — विक्रम जी को दिखता है";
+        b.setContentTitle("📋 हमारी टीम का नया काम" + (cnt > 1 ? " (" + cnt + ")" : ""))
+                .setContentText(newT)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setPriority(Notification.PRIORITY_MAX)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setAutoCancel(true)
+                .setContentIntent(openApp(7, false))
+                .setFullScreenIntent(openApp(8, false), true);
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 1, b.build()); } catch (Exception ignore) { }
+        remSound("t11");
     }
 
     private void fire(String key) {

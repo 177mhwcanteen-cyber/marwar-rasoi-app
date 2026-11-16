@@ -450,6 +450,7 @@ public class BtPrinterPlugin extends Plugin {
         e.putBoolean("loud", call.getBoolean("loud", true));
         e.putBoolean("orders", call.getBoolean("orders", true)); // वाइस शेफ: ऑर्डर की घंटी नहीं, सिर्फ़ रिमाइंडर
         e.putString("role", call.getString("role", ""));
+        e.putString("em", call.getString("em", "")); // 📋 हमारी टीम के काम: इस फोन वाले का लॉगिन (मोबाइल@marwar-rasoi.app)
         String tone = call.getString("tone", "");
         if (tone != null && tone.length() > 0) e.putString("tone", tone);
         e.putBoolean("on", true);
