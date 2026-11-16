@@ -115,6 +115,7 @@ async def main():
         V = [f for k, f in DOCS.items() if k.startswith("tvr/")]; ok(sorted(sv(f, "ans") for f in V) == ["mila", "pahuncha"] and all(sv(f, "em") == KB for f in V), "विज़िट: पहुँचा + मिला")
         await kb.fill("#msgt", "चेक मिल गया, कल जमा करूँगा"); await kb.click('[data-tk="msend"]'); await kb.wait_for_timeout(500)
         ok(any(sv(f, "fr") == "s" and "चेक मिल गया" in sv(f, "t") for k, f in DOCS.items() if k.startswith("tmsg/")), "साथी का संदेश")
+        n = await ow.evaluate("msgAll('शाम 7 बजे पार्टी है')"); ok(n >= 1 and any(sv(f, "fr") == "d" and sv(f, "em") == KB and "पार्टी है" in sv(f, "t") for k, f in DOCS.items() if k.startswith("tmsg/")), "📣 संदेश बाकी साथी (कैलाश भाई) तक भी गया")
         FAIL.add(KB); await kb.click('[data-tk="note"]'); await kb.fill("#kmn", "आधा काम हुआ"); await kb.click("#kmo"); await kb.wait_for_timeout(500)
         ok(await kb.evaluate("LS.get('mr_out',[]).length") == 1 and "भेजना बाकी" in await kb.inner_text("#pg"), "नेट नहीं: कतार में")
         FAIL.discard(KB); await kb.evaluate("flushOut()"); await kb.wait_for_timeout(500)

@@ -77,3 +77,9 @@ const SMINE = { L: [] };
 function sMine() { const ids = LS.get("mr_my_orders", []).filter(x => x.ts > today0()); if (!ids.length) return "";
   if (!SMINE.t || now() - SMINE.t > 15000) { SMINE.t = now(); Promise.all(ids.map(x => DB.mode === "fs" ? fsGet("orders", x.id).catch(() => null) : Promise.resolve((DB.all() || []).find(o => o.id === x.id)))).then(a => { SMINE.L = a.filter(Boolean); if (TAB === "take" && ME.role === "saathi" && !$("#sheet.open")) { const h = $("#smine"); h && (h.outerHTML = sMine()) } }) }
   return `<div id="smine"><div class="h">🧾 आज मेरे भेजे ऑर्डर</div>${SMINE.L.map(o => `<div class="row"><span>${E(where(o))} · ${rs(o.total)}<small> ${hm(o.ts)}</small></span><b style="color:${(ST[o.status] || {}).c || "#475569"}">${E((ST[o.status] || {}).hi || o.status)}</b></div>`).join("") || `<div class="empty">⏳ …</div>`}</div>` }
+
+/* 📣 संदेश सबको (16-11): डायरेक्टर का "मैनेजर को संदेश" मैनेजर को घंटी (ऑर्डर-पुकार) + जुड़े हर और साथी को tmsg (fr d, उसका em) — उनके फ़ोन पर "💬 विक्रम जी" सूचना/टिक वैसे ही जैसे VBE से भेजे संदेश पर। मैनेजर को दो बार नहीं। लौटाता है कितनों को गया। */
+async function msgAll(t) {
+  try { const at = now(), L = (await fsQuery({ from: [{ collectionId: "staff" }], limit: 100 })).filter(u => u.id !== ME.uid && (u.em || u.phone) && !["off", "pending", "manager", "owner"].includes(u.role)); let n = 0;
+    for (const u of L) { try { await fsSet("tmsg", "m" + at.toString(36) + "_" + u.id.slice(0, 8), { em: u.em || mail(u.phone), fr: "d", t: "📣 " + t, kid: "", at, by: "विक्रम जी" }); n++ } catch (e) {} }
+    return n } catch (e) { return 0 } }
