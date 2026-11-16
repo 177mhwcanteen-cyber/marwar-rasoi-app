@@ -592,6 +592,7 @@ public class OrderRingService extends Service {
         StringBuilder ns = new StringBuilder(",");
         String newT = null; int cnt = 0; boolean urgent = false; int openN = 0; java.util.ArrayList<String> tops = new java.util.ArrayList<>();
         String ktone = prefs(this).getString("ktone", "tick");
+        java.util.HashSet<String> vdays = new java.util.HashSet<>();
         String[] cols = {"tkaam", "tmsg", "tvisit"};
         for (String col : cols) {
             JSONArray arr;
@@ -616,6 +617,7 @@ public class OrderRingService extends Service {
                     if (!"d".equals(sv(f, "fr"))) continue;
                     key = "m" + id; txt = "💬 विक्रम जी: " + sv(f, "t");
                 } else {
+                    vdays.add(sv(f, "day"));
                     key = "v" + id + sv(f, "mt"); txt = "🗺️ " + ("".equals(sv(f, "day")) ? "" : sv(f, "day") + " की ") + "विज़िट आ गई";
                 }
                 ns.append(key).append(",");
@@ -623,6 +625,24 @@ public class OrderRingService extends Service {
             }
         }
         kp.edit().putString("seen", ns.toString()).putBoolean("init2", true).apply();
+        /* 🗺️ योजना-6 (योजना-3 E6): विज़िट की तय याद — रात 8 बजे "कल की", सुबह 8:30 "आज की" (हर एक दिन में एक बार) */
+        try {
+            Calendar c = Calendar.getInstance(); int hr = c.get(Calendar.HOUR_OF_DAY), mn = c.get(Calendar.MINUTE);
+            java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+            String td = df.format(c.getTime()); c.add(Calendar.DATE, 1); String tm = df.format(c.getTime());
+            String vk = null, vt = null;
+            if (hr == 20 && vdays.contains(tm)) { vk = tm + "pm"; vt = "🌙 कल की विज़िट तैयार है — रास्ता देख लीजिए"; }
+            else if ((hr == 8 && mn >= 30 || hr == 9) && vdays.contains(td)) { vk = td + "am"; vt = "🗺️ आज की विज़िट — शुभ दिन! पहली यूनिट से शुरू करें"; }
+            if (vk != null && !vk.equals(kp.getString("vrem", ""))) {
+                kp.edit().putString("vrem", vk).apply();
+                Notification.Builder vb = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_TICK2) : new Notification.Builder(this);
+                vb.setContentTitle(vt).setContentText("ऐप खोलें → मेरा दिन में सबसे ऊपर · समय पर सेवा, हमारी पहचान 🙏").setSmallIcon(R.mipmap.ic_launcher)
+                        .setPriority(Notification.PRIORITY_HIGH).setVisibility(Notification.VISIBILITY_PUBLIC).setAutoCancel(true).setContentIntent(openApp(8, false))
+                        .setCategory(Notification.CATEGORY_REMINDER).setLights(0xFFE0B03C, 600, 900);
+                ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 3, vb.build());
+                kplay(ktone, 1);
+            }
+        } catch (Exception ignore) { }
         /* 🔁 हर N मिनट याद (साथी चुने: 15/30/60/बंद; डिफ़ॉल्ट 30) — खुले काम हों तो ऊपर उतरती सूचना + चमक + धुन एक बार; रात 9–सुबह 7 नहीं */
         int kb = prefs(this).getInt("kblink", 30);
         long lb = kp.getLong("lblink", 0);

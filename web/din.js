@@ -66,13 +66,17 @@ async function vzAns(vid, i, ans) {
 function vMsg() {
   const M = DIN.M.slice(-12);
   return `<div class="h">💬 विक्रम जी से बात</div><div class="msgs">${M.map(m => `<div class="tmg ${m.fr === "s" ? "me" : ""} ${m.fr === "d" && isFresh("m" + m.id) ? "fl" : ""}">${m.kt ? `<small>📋 ${E(m.kt)}</small>` : ""}${E(m.t)}<em>${hm(m.at)}</em></div>`).join("") || `<div class="empty" style="padding:8px">कोई बात हो तो यहाँ लिखिए — सीधे विक्रम जी तक</div>`}</div>
-   <div class="msgin"><input class="in" id="msgt" maxlength="500" placeholder="लिखिए… (क्या हुआ, क्या चाहिए)"><button class="btn" data-tk="msend">भेजें</button></div>` }
+   <div class="msgin"><input class="in" id="msgt" maxlength="500" placeholder="लिखिए… (क्या हुआ, क्या चाहिए)"><button class="btn" data-tk="msend">भेजें</button></div>
+   <button class="lnk" data-tk="kreq">🆕 कोई नया काम दिखा? विक्रम जी को बताएँ — वे आपके नाम कर देंगे</button>` }
+function kreqSend() { noteSheet("🆕 नया काम बताएँ", "जो काम आपको फ़ील्ड में दिखा — विक्रम जी एक दबाव में उसे आपके नाम कर देंगे", "जैसे: 17 MAC में कूलर ठीक कराना है, सूबेदार साहब 98…", t => { const at = now(), doc = { em: kmEm(), fr: "s", t: "🆕 काम: " + t, at, by: ME.name };
+  DIN.M.push(Object.assign({ id: "loc" + at }, doc)); qSend("tmsg", "s" + at.toString(36) + Math.random().toString(36).slice(2, 6), doc); toast("🆕 विक्रम जी को भेज दिया — शाबाश!"); dinRedraw() }) }
 function msgSend() { const i = $("#msgt"); const t = (i && i.value || "").trim(); if (t.length < 2) return toast("कुछ लिखिए"); const at = now(), doc = { em: kmEm(), fr: "s", t, at, by: ME.name };
   DIN.M.push(Object.assign({ id: "loc" + at }, doc)); qSend("tmsg", "s" + at.toString(36) + Math.random().toString(36).slice(2, 6), doc); toast("💬 भेज दिया"); dinRedraw() }
 /* ── छोटी शीट: कारण / स्थिति ── */
-function noteSheet(h, sub, ph, cb) {
-  const b = sheet2(`<div class="sh"><h3>${h}</h3><p class="hint">${E(sub)}</p><textarea class="in" id="kmn" rows="3" maxlength="500" placeholder="${E(ph)}"></textarea><div class="err" id="kme"></div><button class="btn big" id="kmo">भेजें</button> <button class="btn gh" id="kmx">रहने दें</button></div>`);
+function noteSheet(h, sub, ph, cb, quick) {
+  const b = sheet2(`<div class="sh"><h3>${h}</h3><p class="hint">${E(sub)}</p>${(quick || []).length ? `<div class="qr">${quick.map(q => `<button data-q="${E(q)}">${E(q)}</button>`).join("")}</div><p class="hint" style="margin:4px 0">या अपने शब्दों में:</p>` : ""}<textarea class="in" id="kmn" rows="3" maxlength="500" placeholder="${E(ph)}"></textarea><div class="err" id="kme"></div><button class="btn big" id="kmo">भेजें</button> <button class="btn gh" id="kmx">रहने दें</button></div>`);
   const shut = () => { const w = $("#sheet2"); w && w.remove() }; b.querySelector("#kmx").onclick = shut;
+  b.querySelectorAll("[data-q]").forEach(q => q.onclick = () => { shut(); cb(q.dataset.q) });
   b.querySelector("#kmo").onclick = () => { const n = b.querySelector("#kmn").value.trim(); if (n.length < 3) return b.querySelector("#kme").textContent = "थोड़ा लिखिए"; shut(); cb(n) } }
 /* ── पूरा घर ── */
 function vDin() {
@@ -87,6 +91,7 @@ function dinRedraw() { if (DIN.host && DIN.host.isConnected) DIN.host.innerHTML 
 function dinClick(x) { const k = x.dataset.tk;
   if (k === "ref") return Promise.all([kaamLoad(true), dinLoad()]).then(dinRedraw);
   if (k === "msend") return msgSend();
+  if (k === "kreq") return kreqSend();
   if (k === "vz") return vzAns(x.dataset.v, +x.dataset.i, x.dataset.a2);
   kaamAns(x.dataset.id, k, $("#kmh")) }
 (() => { const st = document.createElement("style"); st.textContent = `
@@ -106,7 +111,7 @@ function vHaal() {
   return `<div class="hl1"><div class="ring big" style="--p:${pct}"><b>${P.today || 0}</b><small>आज ⭐ / ${P.goal || 100}</small></div>
     <div><b>${E(myFirst())} जी</b><span>${L.ic || "🌱"} ${E(L.n || "शुरुआत")} · कुल ⭐ ${P.tot || 0}</span>${P.streak ? `<span>🔥 ${P.streak} दिन लगातार</span>` : ""}
     ${L.next ? `<div class="lvb"><i style="width:${L.pc || 0}%"></i></div><small>${E(L.nn || "")} तक ${L.next} ⭐ और</small>` : ""}</div></div>
-   <div class="tip">💡 ${E(P.tip || "")}</div>
+   ${P.reward ? `<div class="rwd">🏆 इस हफ़्ते का इनाम: <b>${E(P.reward)}</b></div>` : ""}<div class="tip">💡 ${E(P.tip || "")}</div>
    <div class="h">📅 पिछले 7 दिन</div><div class="hbars">${W.map(x => `<div><i style="height:${Math.round((x.s || 0) * 100 / mx)}%"></i><b>${x.s || ""}</b><small>${day(x.d)}</small></div>`).join("")}</div>
    <div class="sum"><div><b>${ot.n ? Math.round(ot.d * 100 / ot.n) + "%" : "—"}</b><small>⏱ समय पर (हफ़्ता)</small></div><div><b>${dn.length}</b><small>✅ 30 दिन में</small></div><div><b>${P.open || 0}</b><small>📋 खुले</small></div></div>
    ${(P.badges || []).length ? `<div class="chips" style="margin:6px 0">${P.badges.map(b => `<span class="bdg">${E(b)}</span>`).join("")}</div>` : ""}
@@ -119,6 +124,9 @@ function burstStars(n) { try { const w = document.createElement("div"); w.classN
 .hl1{display:flex;gap:14px;align-items:center;background:#fff;border-radius:16px;padding:12px;box-shadow:0 1px 3px #0002}.hl1>div:last-child{flex:1;min-width:0}.hl1 b{font-size:17px;display:block}.hl1 span{display:block;font-size:13px;color:#475569}.hl1 small{font-size:11.5px;color:#64748b}
 .ring.big{--p:0;flex:0 0 92px;height:92px;border-radius:50%;background:conic-gradient(#d97706 calc(var(--p)*1%),#fde68a55 0);display:grid;place-items:center;position:relative;align-content:center}.ring.big:after{content:"";position:absolute;inset:9px;border-radius:50%;background:#fff}.ring.big b,.ring.big small{position:relative;z-index:1;text-align:center}.ring.big b{font-size:26px;color:#7a1c1c;line-height:1}.ring.big small{font-size:10px;color:#64748b}
 .lvb{height:7px;background:#f1f5f9;border-radius:9px;margin:6px 0 2px;overflow:hidden}.lvb i{display:block;height:100%;background:linear-gradient(90deg,#f59e0b,#b45309);border-radius:9px}
+.rwd{background:linear-gradient(135deg,#7f1d1d,#b45309);color:#fde68a;border-radius:12px;padding:9px 12px;margin:8px 0;font-size:14px}.rwd b{color:#fff}
+.qr{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.qr button{padding:10px 6px;border-radius:12px;background:#f1f5f9;border:1px solid #e2e8f0;font-weight:600;font-size:13.5px}
+.kst{margin:5px 0 3px}.kstb{height:6px;border-radius:5px;background:#e5e7eb;overflow:hidden}.kstb i{display:block;height:100%;background:linear-gradient(90deg,#16a34a,#86efac)}.kst small{display:block;font-size:12px;color:#64748b;margin-top:3px}
 .tip{background:#fffbeb;color:#92400e;border-radius:12px;padding:8px 11px;margin:8px 0;font-weight:600;font-size:14px}
 .hbars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:96px;align-items:end;background:#fff;border-radius:14px;padding:8px}.hbars div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}.hbars i{display:block;width:70%;min-height:3px;background:linear-gradient(#f59e0b,#b45309);border-radius:5px 5px 2px 2px}.hbars b{font-size:10.5px;color:#7a1c1c}.hbars small{font-size:10.5px;color:#64748b}
 .bdg{background:#fef3c7!important;color:#92400e!important;font-weight:700}

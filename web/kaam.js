@@ -31,7 +31,8 @@ function kmCard(k, ro) {
    <div class="tk1"><b>${k.urgent ? "🚨 " : ""}${E(k.t)}</b><span class="${late ? "red" : ""}">${E(kmDay(k.due))}${k.time ? " · " + E(k.time) : ""}</span></div>
    ${!ro && !done && typeof dueText === "function" ? `<div class="tk2">${dueText(k) ? `<span class="${late ? "red" : ""}">${dueText(k)}</span>` : ""}${ageText(k) ? `<span>· ${ageText(k)}</span>` : ""}${k.earn ? `<span class="earn">· ये कर देंगे तो ⭐ ${k.earn}</span>` : ""}</div>` : ""}
    ${k.x && k.x !== k.t ? `<small>${E(String(k.x).slice(0, 220))}</small>` : ""}
-   <div class="chips">${k.unit ? `<span>🏢 ${E(k.unit)}</span>` : ""}${k.party ? `<span>👤 ${E(k.party)}</span>` : ""}${ro ? `<span>🙋 ${E(k.who || "")}</span>` : ""}</div>
+   ${(k.steps || []).length ? (() => { const n = k.steps.filter(x => x.ok).length, pc = Math.round(n * 100 / k.steps.length); return `<div class="kst"><div class="kstb"><i style="width:${pc}%"></i></div><small>☑ ${n}/${k.steps.length} कदम · ${k.steps.map(x => (x.ok ? "✅ " : "⬜ ") + E(x.t)).join("  ")}</small></div>` })() : ""}
+   <div class="chips">${k.every ? `<span>🔁 ${({ d: "हर दिन", w: "हर हफ़्ते", m: "हर महीने" })[k.every] || ""}</span>` : ""}${k.unit ? `<span>🏢 ${E(k.unit)}</span>` : ""}${k.party ? `<span>👤 ${E(k.party)}</span>` : ""}${ro ? `<span>🙋 ${E(k.who || "")}</span>` : ""}</div>
    ${k.rej && k.st === "open" ? `<div class="tkrej">↺ विक्रम जी: अभी पूरा नहीं माना — फिर देखिए</div>` : ""}
    ${k.st === "claim" ? `<div class="tksent">✅ आपने "हो गया" भेजा — विक्रम जी की मुहर बाकी</div>` : k.st === "done" ? `<div class="tksent">✅ पूरा</div>` : s && s.at > (k.mt || 0) - 5000 ? `<div class="tksent">${KANS[s.ans][0]} भेजा: ${KANS[s.ans][1]} · ${hm(s.at)}${s.note ? " — " + E(s.note) : ""}</div>` : ""}
    ${ro || done ? "" : `<div class="tkb"><button class="btn ok" data-tk="done" data-id="${E(k.id)}">✅ हो गया</button><button class="btn" data-tk="gaya" data-id="${E(k.id)}">🚗 गया</button><button class="btn gh" data-tk="nahi" data-id="${E(k.id)}">❌ नहीं</button></div><button class="lnk" data-tk="note" data-id="${E(k.id)}">💬 स्थिति लिखें (क्या किया, कितना बाकी)</button>`}
@@ -62,7 +63,7 @@ async function kaamAns(id, ans, host) {
     const S = kmSent(); S[id] = { ans, at, note: note || "" }; LS.set("mr_tkans", S); if (ans === "done") { k.st = "claim"; k.mt = at }
     if (DB.mode === "fs") qSend("tkr", rid, doc);
     toast(ans === "nahi" ? "ठीक है — विक्रम जी को पता चल गया, मिलकर हल करेंगे" : ans === "done" ? "✅ शाबाश! विक्रम जी की मुहर पर ⭐ पक्के" : KANS[ans][0] + " भेज दिया — विक्रम जी को दिखेगा"); if (ans === "done" && typeof burstStars === "function") burstStars(k.earn); kaamDraw(host) };
-  if (ans === "nahi") return noteSheet("❌ क्या रुकावट है?", k.t, "जैसे: पार्टी फोन नहीं उठा रही / कल जाऊँगा", go);
+  if (ans === "nahi") return noteSheet("❌ क्या रुकावट है?", k.t, "जैसे: पार्टी फोन नहीं उठा रही / कल जाऊँगा", go, ["📵 पार्टी फ़ोन नहीं उठा रही", "🚪 पार्टी नहीं मिली", "📦 माल/सामान नहीं आया", "📅 कल कर दूँगा"]);
   if (ans === "note") return noteSheet("💬 स्थिति लिखें", k.t, "क्या किया, कितना बाकी, कब तक", go);
   go("");
 }

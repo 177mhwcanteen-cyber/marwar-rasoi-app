@@ -131,6 +131,14 @@ async def main():
         ok(await kb.evaluate("LS.get('mr_ktone')==='t12'&&+LS.get('mr_kblink')===15"), "🎵 धुन t12 + याद हर 15 मिनट सहेजी")
         await kb.click('#tabs [data-t="more"]'); await kb.click('[data-a="talk"]'); await kb.wait_for_selector('#tkto [data-to="r:owner"]')
         ok("विक्रम जी" in await kb.inner_text("#tkto"), "🎙️ साथी का वॉकी: विक्रम जी को भेज सकें"); await kb.click("#sheet .sx")
+        # योजना-6: नया काम बताएँ → tmsg "🆕 काम:"; नहीं पर तैयार कारण
+        await kb.click('#tabs [data-t="din"]'); await kb.click('[data-tk="kreq"]'); await kb.wait_for_selector("#kmn"); await kb.fill("#kmn", "17 MAC में कूलर ठीक कराना"); await kb.click("#kmo"); await kb.wait_for_timeout(1500)
+        ok(any(k.startswith("tmsg/") and sv(v, "t").startswith("🆕 काम: 17 MAC") for k, v in DOCS.items()), "🆕 साथी ने नया काम बताया (tmsg)")
+        nb = await kb.locator('[data-tk="nahi"]').count()
+        if nb:
+            await kb.locator('[data-tk="nahi"]').first.click(); await kb.wait_for_selector(".qr [data-q]"); await kb.screenshot(path=SH + "/rasoi-reasons.png")
+            await kb.locator(".qr [data-q]").first.click(); await kb.wait_for_timeout(1500)
+            ok(any(k.startswith("tkr/") and "फ़ोन नहीं उठा" in (sv(v, "note") or "") for k, v in DOCS.items()), "❌ नहीं: तैयार कारण एक दबाव में")
         ok(await kb.evaluate("(()=>{let n=0;const o=document.hidden;Object.defineProperty(document,'hidden',{value:true,configurable:true});const a=TICK.n;tick();n=TICK.n-a;Object.defineProperty(document,'hidden',{value:o,configurable:true});return n===0})()"), "ऐप पीछे हो तो वेब से आवाज़ नहीं")
         await kb.click('#tabs [data-t="din"]')
         await ow.evaluate("kaamSheet()"); await ow.wait_for_selector("#sheet .tkg"); t = await ow.inner_text("#sheet"); ok("स्वरूप जी" in t and "कैलाश भाई" in t, "डायरेक्टर को सबका हाल: " + t[:200]); await ow.click("#sheet .sx")
