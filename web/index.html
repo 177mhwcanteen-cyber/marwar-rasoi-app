@@ -5,7 +5,7 @@
 <div class="pg" id="pg"></div>
 <button class="bar" id="bar" hidden></button>
 <div class="tabs" id="tabs"><button data-t="orders"><span>🔔</span>ऑर्डर<b id="nb" hidden></b></button><button data-t="tables"><span>🍽️</span>टेबल</button><button data-t="take"><span>➕</span>ऑर्डर लें</button><button data-t="store"><span>📦</span>स्टोर</button><button data-t="more"><span>☰</span>और</button></div>
-<script>window.MR_BUILD="dev"</script><script src="watch.js"></script><script src="config.js"></script><script src="core.js"></script><script src="store.js"></script><script src="owner.js"></script><script src="cust.js"></script><script src="galla.js"></script><script src="team.js"></script><script src="remind.js"></script><script src="talk.js"></script><script src="phone.js"></script><script src="kaam.js"></script>
+<script>window.MR_BUILD="dev"</script><script src="watch.js"></script><script src="config.js"></script><script src="core.js"></script><script src="store.js"></script><script src="owner.js"></script><script src="cust.js"></script><script src="galla.js"></script><script src="team.js"></script><script src="remind.js"></script><script src="talk.js"></script><script src="phone.js"></script><script src="kaam.js"></script><script src="sath.js"></script>
 <script>
 /* मारवाड़ रसोई — मैनेजर / वेटर / डायरेक्टर ऐप (चरण 1+2) — नियम: docs/मारवाड़-रसोई-ऐप-प्रॉम्प्ट.txt */
 let ME = LS.get("mr_me", null), TAB = "orders", ALL = [], SIL = {}, TAKE = { type: "table", table: 0, cart: {}, note: "" };
@@ -15,7 +15,7 @@ const isLate = o => o.status === "new" && now() - o.ts > WAIT;
 const todays = () => ALL.filter(o => o.ts >= today0());
 const pend = () => todays().filter(o => o.status === "new");
 /* किसके फोन पर घंटी: मैनेजर/वेटर — हर नया; डायरेक्टर — सिर्फ़ वे जो 3 मिनट से अटके हैं */
-const ringFor = () => pend().filter(o => !SIL[o.id] && (ME && ME.role === "owner" ? isLate(o) : true));
+const ringFor = () => pend().filter(o => !SIL[o.id] && ringOK(o) && (ME && ME.role === "owner" ? isLate(o) : true)); /* 16-11: ऑनलाइन ऑर्डर सिर्फ़ मैनेजर; वेटर = टेबल की पुकार (sath.js ringKind) */
 
 function login() {
   const b = sheet(`<h3>👋 कौन चला रहा है?</h3><input class="in" id="ln" placeholder="आपका नाम" value="${E(ME ? ME.name : CFG.manager.name)}">
@@ -77,9 +77,10 @@ function review() {
     const o = { kind: "order", type: TAKE.type, table: TAKE.type === "table" ? TAKE.table : 0, items: L, total: cartTotal(TAKE.cart), note: $("#nt", b).value.trim(), by: ME.name,
       name: ($("#cn", b) || {}).value || "", phone: (($("#cp", b) || {}).value || "").replace(/\D/g, ""), addr: ($("#ca", b) || {}).value || "" };
     if (TAKE.type === "delivery" && !o.addr) return toast("पता लिखें");
-    o.status = "acc"; o.eta = (CFG.prep || [25])[1] || 25; /* वेटर का लिया ऑर्डर सीधा स्वीकार — घंटी नहीं */
+    if (ME.role === "saathi") { o.status = "new"; o.taker = ME.name } /* साथी का लिया ऑर्डर → मैनेजर स्वीकार करे (घंटी) */
+    else { o.status = "acc"; o.eta = (CFG.prep || [25])[1] || 25 } /* वेटर का लिया ऑर्डर सीधा स्वीकार — घंटी नहीं */
     $("#send", b).disabled = true;
-    DB.add(o).then(() => { TAKE = { type: TAKE.type, table: 0, cart: {}, note: "" }; closeSheet(); toast("ऑर्डर रसोई में गया ✔"); TAB = "orders"; draw() }).catch(e => { $("#send", b).disabled = false; toast("नहीं गया — नेट देखें") });
+    DB.add(o).then(() => { TAKE = { type: TAKE.type, table: 0, cart: {}, note: "" }; closeSheet(); if (ME.role === "saathi") { LS.set("mr_my_orders", LS.get("mr_my_orders", []).filter(x => x.ts > today0()).concat([{ id: o.id, ts: now() }])); SMINE.t = 0; toast("✅ मैनेजर को भेज दिया"); TAB = "take" } else { toast("ऑर्डर रसोई में गया ✔"); TAB = "orders" } draw() }).catch(e => { $("#send", b).disabled = false; toast("नहीं गया — नेट देखें") });
   };
 }
 /* ☰ और (15-11 चरण B): लंबी लाइनों की जगह 3-कॉलम टाइल — आइकन + 1-2 शब्द + छोटा अंक; पद के हिसाब से ही टाइल दिखे */
@@ -121,15 +122,15 @@ function vMore() { moreLoad();
     ["📊 आज", ME.role === "kitchen" ? [] : [["", "🧾", "ऑर्डर", ok.length], ["", "💰", "बिक्री", "₹" + kmb(ok.reduce((t, o) => t + o.total, 0))], ["", "⏱", "स्वीकार", avg ? avg + "s" : "—"]].concat(own ? [["", "🚨", "डायरेक्टर तक पहुँचे", esc, esc ? "red" : ""], ["bills", "🧾", "आज के बिल", noTm ? noTm + " बिना नं." : T.filter(o => o.status === "done").length, noTm ? "red" : ""], ["report", "📈", "रिपोर्ट"]] : [])],
     ["💼 पैसा", mg ? [["galla", "💵", "गल्ला", MORE.gl != null ? "₹" + kmb(MORE.gl) : ""], ["udhar", "📒", "उधारी", MORE.ud != null ? "₹" + kmb(MORE.ud) : "", MORE.ud > 0 ? "red" : ""]] : []],
     ["🏨 होटल", [["remind", "⏰", "रिमाइंडर"], ["store", "📦", "स्टोर", low ? low + " कम" : "", low ? "red" : ""], ["check", "✅", "चेकलिस्ट"], ["assets", "🪑", "प्रॉपर्टी"]]],
-    ["👥 लोग", [["kaam", "📋", "हमारी टीम के काम", kmOpen().length || "", kmOpen().some(k => k.urgent) ? "red" : ""], ["talk", "🎙️", "वॉकी-टॉकी"]].concat(mg ? [["hr", "🧑‍🍳", "टीम-हाज़िरी"], ["cust", "👑", "ग्राहक"]] : [], own ? [["devs", "📱", "टीम के फोन"], ["map", "🗺️", "टीम कहाँ है"], ["msg", "📣", "मैनेजर को संदेश"]] : [], own && DB.mode === "fs" ? [["team", "🔑", "खाते-मंज़ूरी"]] : [])],
-    ["⚙️ सेटिंग", (ME.role === "kitchen" ? [] : [["qr", "🖨️", "टेबल QR"], ["tpage", "📱", "ग्राहक-पेज"]]).concat([["bells", "🔔", "घंटियाँ"], ["psetup", "📲", "फोन की तैयारी"]]).concat(own ? [["code", "🤖", "Claude कोड"]] : [], [DB.mode === "fs" ? ["logout", "🚪", "लॉगआउट"] : ["login", "👤", "बदलें"]])]];
+    ["👥 लोग", [["kaam", "📋", "हमारी टीम के काम", kmOpen().length || "", kmOpen().some(k => k.urgent) ? "red" : ""], ["talk", "🎙️", "वॉकी-टॉकी"]].concat(mg ? [["hr", "🧑‍🍳", "टीम-हाज़िरी"], ["cust", "👑", "ग्राहक"]] : [], own ? [["devs", "📱", "टीम के फोन"], ["map", "🗺️", "टीम कहाँ है"], ["msg", "📣", "मैनेजर को संदेश"]] : [], own && DB.mode === "fs" ? [["team", "👥", "हमारी टीम · खाते"]] : [])],
+    ["⚙️ सेटिंग", (ME.role === "kitchen" ? [] : [["qr", "🖨️", "टेबल QR"], ["tpage", "📱", "ग्राहक-पेज"]]).concat([["bells", "🔔", "घंटियाँ"], ["psetup", "📲", "फोन की तैयारी"], ["pin", "🔑", "पिन बदलें"]]).concat(own ? [["code", "🤖", "Claude कोड"]] : [], [DB.mode === "fs" ? ["logout", "🚪", "लॉगआउट"] : ["login", "👤", "बदलें"]])]];
   return `<div class="mme"><b>👤 ${E(ME.name)}</b><span>${ROLES[ME.role]}</span><button class="row" data-a="upd" id="updrow">🔄 ऐप अपडेट जाँचें · वर्ज़न ${window.MR_BUILD}</button></div>
   ${G.filter(g => g[1].length).map(g => `<div class="h">${g[0]}</div><div class="mtg">${g[1].map(x => x[0] ? tl(...x) : `<div class="mt st ${x[4] || ""}"><i>${x[1]}</i><b>${x[3]}</b><span>${x[2]}</span></div>`).join("")}</div>`).join("")}${DB.err ? `<div class="empty">⚠ ${E(DB.err)}</div>` : ""}`;
 }
 function onAct(e, after) {
   const a = e.target.closest("[data-a]"); if (!a) return false; const id = a.dataset.id, k = a.dataset.a;
   if (k === "sil") { pend().forEach(o => SIL[o.id] = 1); ring() }
-  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "kaam") return kaamSheet(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true; else if (k === "map") return mapSheet(), true; else if (k === "udhar") return udharSheet(), true; else if (k === "code") return codeSheet(), true; else if (k === "cust") return custSheet(), true; else if (k === "report") return reportSheet(), true; else if (k === "upd") return updCheck(true), true; else if (k === "galla") return gallaSheet(), true; else if (k === "hr") return hrSheet(), true; else if (k === "bills") return billSheet(), true; else if (k === "remind") return remindSheet(), true; else if (k === "talk") return talkSheet(), true; else if (k === "devs") return devSheet(), true; else if (k === "psetup") return phoneSetup(false), true; else if (k === "bells") return bellSheet(), true; else if (k === "store") { TAB = "store"; draw(); return true } else if (k === "qr") return open("qr.html", "_blank"), true; else if (k === "tpage") return open("t/?t=1", "_blank"), true;
+  else if (k === "bell") { const P = NAT(); P ? P.ringTest().catch(() => BELL.beep()) : BELL.beep() } else if (k === "login") login(); else if (k === "team") return team(), true; else if (k === "kaam") return kaamSheet(), true; else if (k === "pin") return pinChange(), true; else if (k === "check") return checkSheet(), true; else if (k === "assets") return assetsSheet(), true; else if (k === "map") return mapSheet(), true; else if (k === "udhar") return udharSheet(), true; else if (k === "code") return codeSheet(), true; else if (k === "cust") return custSheet(), true; else if (k === "report") return reportSheet(), true; else if (k === "upd") return updCheck(true), true; else if (k === "galla") return gallaSheet(), true; else if (k === "hr") return hrSheet(), true; else if (k === "bills") return billSheet(), true; else if (k === "remind") return remindSheet(), true; else if (k === "talk") return talkSheet(), true; else if (k === "devs") return devSheet(), true; else if (k === "psetup") return phoneSetup(false), true; else if (k === "bells") return bellSheet(), true; else if (k === "store") { TAB = "store"; draw(); return true } else if (k === "qr") return open("qr.html", "_blank"), true; else if (k === "tpage") return open("t/?t=1", "_blank"), true;
   else if (k === "msg") { const b = sheet(`<h3>📣 मैनेजर को संदेश</h3><textarea class="in" id="mt" rows="3" maxlength="190" placeholder="जैसे: शाम 7 बजे 20 लोगों की पार्टी है, तैयारी रखें"></textarea><button class="btn big" id="ms">भेजें — मैनेजर के फोन पर घंटी बजेगी</button>`); $("#ms", b).onclick = () => { const n = $("#mt", b).value.trim(); if (n.length < 3) return toast("संदेश लिखें"); DB.add({ kind: "call", call: "msg", type: "parcel", table: 0, by: ME.name, note: n }).then(() => { closeSheet(); toast("संदेश गया ✔"); TAB = "orders"; draw() }).catch(() => toast("नहीं गया — नेट देखें")) }; return true } else if (k === "logout") return logout(), true;
   else if (k === "acc") { const b = sheet(`<h3>✅ कितने मिनट में तैयार?</h3><div class="seg">${(CFG.prep || [15, 25, 35]).map(m => `<button data-m="${m}" style="flex:1">${m} मिनट</button>`).join("")}</div>`); b.onclick = x => { const m = x.target.closest("[data-m]"); if (m) { act(id, { status: "acc", eta: +m.dataset.m }); closeSheet(); (after || draw)() } }; return true }
   else if (k === "rej") { const b = sheet(`<h3>❌ मना करने का कारण</h3><div class="seg">${["डिश खत्म", "रसोई बंद", "बहुत भीड़", "ग्राहक ने रद्द किया"].map(r => `<button data-r="${r}">${r}</button>`).join("")}</div>`); b.onclick = x => { const r = x.target.closest("[data-r]"); if (r) { act(id, { status: "rej", why: r.dataset.r }); closeSheet(); (after || draw)() } }; return true }
@@ -145,7 +146,7 @@ function onAct(e, after) {
   else if (id) act(id, { status: k });
   after && after(); return true;
 }
-function ring() { const n = pend().length, nb = $("#nb"); nb.hidden = !n; nb.textContent = n; BELL.set(!!ME && ME.role !== "kitchen" && !NAT() && ringFor().length > 0) /* APK में असली अलार्म सेवा बजाती है */ }
+function ring() { const n = pend().length, nb = $("#nb"); if (nb) { nb.hidden = !n; nb.textContent = n } BELL.set(!!ME && ringKind() !== "none" && !NAT() && ringFor().length > 0) /* APK में असली अलार्म सेवा बजाती है */ }
 /* ───── असली मोड (Firebase): मोबाइल + पिन से लॉगिन, डायरेक्टर की मंज़ूरी, टीम, APK की घंटी/लोकेशन ───── */
 /* लॉगिन की ग़लती साफ़ हिंदी में + असली कोड (स्क्रीनशॉट से पता चले क्या अटका) */
 const AERR = m => { m = String(m || ""); const t = /OPERATION_NOT_ALLOWED|ADMIN_ONLY/.test(m) ? "Firebase में Email/Password लॉगिन चालू नहीं है — Authentication → Sign-in method → Email/Password → Enable → Save"
@@ -155,16 +156,19 @@ const AERR = m => { m = String(m || ""); const t = /OPERATION_NOT_ALLOWED|ADMIN_
   return t + " · कोड: " + m.slice(0, 70) };
 function fsLogin(msg) {
   const b = sheet(`<div class="lg"><img src="icon.png" alt=""><h3>Marwar Rasoi</h3><p>अपना मोबाइल नंबर और पिन डालें।<br>पहली बार आए हैं तो यही आपका नया पिन बन जाएगा।</p></div>
-  <input class="in big" id="fp" inputmode="numeric" maxlength="10" autocomplete="username" placeholder="मोबाइल नंबर (10 अंक)" value="${E(LS.get("mr_ph", ""))}">
+  <input class="in big" id="fp" inputmode="numeric" maxlength="10" autocomplete="username" placeholder="मोबाइल नंबर (10 अंक)" value="${E(LS.get("mr_ph", ""))}"><div id="fhi" class="hint" style="min-height:20px;font-weight:700;color:#15803d"></div>
   <input class="in big" id="fk" type="password" inputmode="numeric" autocomplete="current-password" placeholder="पिन (6 अंक या ज़्यादा)">
   <div class="err" id="ferr">${msg ? E(msg) : ""}</div><button class="btn big" id="fgo">आगे बढ़ें ›</button><button class="btn gh sm" id="fdir" style="width:100%;margin-top:8px">🎩 डायरेक्टर? ईमेल से लॉगिन</button>`);
   $(".scrim", b.parentNode).removeAttribute("data-x"); $(".sx", b).remove();
   $("#fdir", b).onclick = () => dirLogin();
-  const er = t => $("#ferr", b).textContent = t;
+  const er = t => $("#ferr", b).textContent = t; let HI = null;
+  const hi = async () => { const ph = $("#fp", b).value.replace(/\D/g, ""); HI = null; $("#fhi", b).textContent = ""; if (ph.length !== 10) return; const h = await helloGet(ph); if ($("#fp", b).value.replace(/\D/g, "") !== ph) return; HI = h;
+    $("#fhi", b).textContent = h ? "🙏 नमस्ते " + h.n + " — अपना पिन डालिए" : "" };
+  $("#fp", b).addEventListener("input", hi); hi();
   $("#fgo", b).onclick = async () => { const ph = $("#fp", b).value.replace(/\D/g, ""), pin = $("#fk", b).value, bt = $("#fgo", b);
     if (ph.length !== 10) return er("मोबाइल नंबर पूरे 10 अंक का लिखें"); if (pin.length < 6) return er("पिन कम से कम 6 अंक का रखें");
     bt.disabled = true; bt.textContent = "⏳ रुकिए…"; er(""); LS.set("mr_ph", ph);
-    try { try { await AUTH.signIn(ph, pin) } catch (e) { if (!/INVALID|NOT_FOUND/.test(e.message)) throw e; /* खाता नहीं है या पिन ग़लत → नया खाता बनाकर देखें */
+    try { try { await AUTH.signIn(ph, pin, HI && HI.e) } catch (e) { if (!/INVALID|NOT_FOUND/.test(e.message)) throw e; /* खाता नहीं है या पिन ग़लत → नया खाता बनाकर देखें */
         try { await AUTH.signUp(ph, pin) } catch (e2) { if (/EMAIL_EXISTS/.test(e2.message)) throw new Error("WRONGPIN"); throw e2 } }
       closeSheet(); boot() }
     catch (e) { bt.disabled = false; bt.textContent = "आगे बढ़ें ›"; er(e.message === "WRONGPIN" ? "इस नंबर का खाता पहले से बना है — पिन ग़लत है। सही पिन डालें (भूल गए हों तो विक्रम जी से कहें)।" : AERR(e.message)) } };
@@ -187,15 +191,25 @@ const askName = () => new Promise(res => { const b = sheet(`<h3>👋 आपक�
   $(".scrim", b.parentNode).removeAttribute("data-x"); $(".sx", b).remove(); $("#nmo", b).onclick = () => { const n = $("#nm", b).value.trim(); if (n.length < 2) return $("#nme", b).textContent = "नाम लिखें"; LS.set("mr_name", n); closeSheet(); res(n) } });
 async function native() { const P = NAT(); if (!P || !AUTH.u || !ME) return;
   /* वाइस शेफ: ऑर्डर की घंटी नहीं, पर ⏰ रिमाइंडर हाँ (orders:false) — पुरानी APK orders/role नहीं समझती, तब पहले जैसा बंद */
-  try { await P.ringStart({ rt: AUTH.u.rt, key: FB.apiKey, pid: FB.projectId, every: 15, open: -1, close: -1, loud: true, wait: ME.role === "owner" ? (CFG.ownerWait || 180) : 0, name: ME.name, ask: true, role: ME.role, em: kmEm(), orders: !["kitchen", "saathi"].includes(ME.role), tone: LS.get("mr_tone", "t1") }) } catch (e) { }
+  try { await P.ringStart({ rt: AUTH.u.rt, key: FB.apiKey, pid: FB.projectId, every: 15, open: -1, close: -1, loud: true, wait: ME.role === "owner" ? (CFG.ownerWait || 180) : 0, name: ME.name, ask: true, role: ME.role, em: kmEm(), orders: ringKind() !== "none", rk: ringKind(), tone: LS.get("mr_tone", "t1") }) } catch (e) { }
   try { if (ME.role !== "owner" && ME.role !== "saathi") await P.trackStart({ name: ME.name }) } catch (e) { }
   setTimeout(() => phoneSetup(true).catch(() => 0), 2500); /* 📲 कुछ इजाज़त बंद हो तो दिन में एक बार तैयारी-शीट */ }
 function logout() { const P = NAT(); try { P && P.ringStop(); P && P.authClear() } catch (e) { } AUTH.out(); ME = null; LS.set("mr_me", null); closeSheet(); boot() }
 async function team() {
-  const b = sheet(`<h3>👥 टीम</h3><div id="tl" class="empty">…</div>`); let L = [];
-  const show = () => $("#tl", b).outerHTML = `<div id="tl">${L.sort((a, c) => (a.role === "pending" ? 0 : 1) - (c.role === "pending" ? 0 : 1)).map(u => `<div class="row" style="flex-wrap:wrap"><span>${E(u.name)} · <a href="tel:${E(u.phone || "")}">📞 ${E(u.phone || "")}</a> · <a href="https://wa.me/91${E(u.phone || "")}" target="_blank" rel="noopener">💬 WhatsApp</a>${u.role === "pending" ? " · <b style='color:#b91c1c'>मंज़ूरी बाकी</b>" : ""}</span><span class="seg" style="margin:0 0 0 auto">${u.role === "owner" ? "<b>डायरेक्टर</b>" : [["manager", "मैनेजर"], ["waiter", "वेटर"], ["kitchen", "वाइस शेफ"], ["saathi", "साथी (सिर्फ़ काम)"], ["off", "बंद"]].map(([r, l]) => `<button data-u="${u.id}" data-r="${r}" class="${u.role === r ? "on" : ""}" style="padding:4px 8px;font-size:12.5px">${l}</button>`).join("")}</span></div>`).join("") || "<div class='empty'>अभी कोई नहीं जुड़ा — साथी ऐप खोलकर 'नया खाता बनाएँ' दबाएँ</div>"}</div>`;
-  try { L = await fsQuery({ from: [{ collectionId: "staff" }], limit: 100 }); show() } catch (e) { $("#tl", b).textContent = "सूची नहीं खुली" }
-  b.onclick = async e => { const x = e.target.closest("[data-u]"); if (!x) return; try { await fs("PATCH", `/staff/${x.dataset.u}?updateMask.fieldPaths=role`, { fields: encF({ role: x.dataset.r }) }); L.find(u => u.id === x.dataset.u).role = x.dataset.r; show(); toast("बदल दिया ✔") } catch (er) { toast("नहीं बदला") } };
+  const b = sheet(`<h3>👥 हमारी टीम</h3>${mateForm()}<div id="tl" class="empty">…</div>`); let L = [];
+  const RL = [["manager", "मैनेजर"], ["waiter", "वेटर"], ["kitchen", "वाइस शेफ"], ["saathi", "साथी (सिर्फ़ काम)"], ["off", "बंद"]], RG = [["all", "🔔 सब ऑर्डर"], ["call", "💧 टेबल-पुकार"], ["none", "🔕 नहीं"]];
+  const show = () => $("#tl", b).outerHTML = `<div id="tl">${L.filter(u => !(u.role === "off" && u.moved)).sort((a, c) => (a.role === "pending" ? 0 : 1) - (c.role === "pending" ? 0 : 1)).map(u => { const rg = u.ring || RING_DEF[u.role] || "none";
+    return `<div class="row" style="flex-wrap:wrap;gap:6px"><span>${E(u.name)} · <a href="tel:${E(u.phone || "")}">📞 ${E(u.phone || "")}</a> · <a href="https://wa.me/91${E(u.phone || "")}" target="_blank" rel="noopener">💬</a>${u.role === "pending" ? " · <b style='color:#b91c1c'>मंज़ूरी बाकी</b>" : ""}</span>
+    <span class="seg" style="margin:0 0 0 auto">${u.role === "owner" ? "<b>डायरेक्टर</b>" : RL.map(([r, l]) => `<button data-u="${u.id}" data-r="${r}" class="${u.role === r ? "on" : ""}" style="padding:4px 8px;font-size:12.5px">${l}</button>`).join("")}</span>
+    ${u.role === "owner" || u.role === "off" || u.role === "pending" ? "" : `<span class="seg" style="width:100%;margin:0">${RG.map(([r, l]) => `<button data-ug="${u.id}" data-g="${r}" class="${rg === r ? "on" : ""}" style="padding:3px 7px;font-size:12px">${l}</button>`).join("")}<button data-up="${u.id}" style="padding:3px 7px;font-size:12px">🔁 नया पिन</button></span>`}</div>` }).join("") || "<div class='empty'>अभी कोई नहीं</div>"}</div>`;
+  const load = async () => { try { L = await fsQuery({ from: [{ collectionId: "staff" }], limit: 200 }); show() } catch (e) { $("#tl", b).textContent = "सूची नहीं खुली" } };
+  if (DB.mode === "fs") await load(); else { L = LS.get("mr_demo_staff", []); show() }
+  b.onclick = async e => {
+    const mr = e.target.closest("[data-mr]"); if (mr) { $$("#mtr button", b).forEach(x => x.classList.toggle("on", x === mr)); return }
+    if (e.target.closest("#mtgo")) return mateCreate(b, () => DB.mode === "fs" ? load() : (L = LS.get("mr_demo_staff", []), show()));
+    const up = e.target.closest("[data-up]"); if (up) { const u = L.find(x => x.id === up.dataset.up); if (u && confirm(u.name + " को नया पिन दें? पुराना पिन बंद हो जाएगा।")) mateRepin(u, load).catch(er => toast("नहीं हुआ")); return }
+    const g = e.target.closest("[data-ug]"); if (g) { try { await fs("PATCH", `/staff/${g.dataset.ug}?updateMask.fieldPaths=ring`, { fields: encF({ ring: g.dataset.g }) }); L.find(u => u.id === g.dataset.ug).ring = g.dataset.g; show(); toast("घंटी बदली ✔ (उनका ऐप दोबारा खुलने पर)") } catch (er) { toast("नहीं बदला") } return }
+    const x = e.target.closest("[data-u]"); if (!x) return; try { await fs("PATCH", `/staff/${x.dataset.u}?updateMask.fieldPaths=role`, { fields: encF({ role: x.dataset.r }) }); L.find(u => u.id === x.dataset.u).role = x.dataset.r; show(); toast("बदल दिया ✔") } catch (er) { toast("नहीं बदला") } };
 }
 async function boot() {
   if (DB.mode === "local") { DB.start(); draw(); if (ME && (ME.role === "owner" || ME.role === "manager")) custLoad().then(draw).catch(() => { }); return ME && autoPacks() }
@@ -204,7 +218,7 @@ async function boot() {
     if (!st) { const base = { name: LS.get("mr_name", "") || await askName(), phone: AUTH.u.ph, ts: now() };
       try { await fsSet("staff", AUTH.u.uid, Object.assign({ role: "owner" }, base)); st = Object.assign({ role: "owner" }, base) } /* नियम सिर्फ़ डायरेक्टर के नंबर को यह करने देते हैं */
       catch (e) { await fsSet("staff", AUTH.u.uid, Object.assign({ role: "pending" }, base)); st = Object.assign({ role: "pending" }, base) } }
-    ME = { name: st.name, role: st.role, uid: AUTH.u.uid }; LS.set("mr_me", ME)
+    ME = { name: st.name, role: st.role, uid: AUTH.u.uid, ring: st.ring || "" }; LS.set("mr_me", ME)
   } catch (e) { if (!AUTH.u) return fsLogin("लॉगिन पुराना हो गया — दोबारा पिन डालें"); if (!ME) { $("#pg").innerHTML = `<div class="empty">⚠ खाता खुल नहीं पाया<br><b style="color:#b91c1c">${E(AERR(e.message))}</b><br><br><button class="btn" onclick="boot()">🔄 फिर कोशिश</button> <button class="btn gh" onclick="logout()">दोबारा लॉगिन</button></div>`; return } }
   if (ME.role === "saathi") { native(); return saathiHome() } /* 📋 रसोई से बाहर के साथी: सिर्फ़ "हमारी टीम के काम" */
   if (!ROLES[ME.role]) { $("#me").textContent = "👤 " + ME.name; $("#pg").innerHTML = `<div class="empty">⏳ <b>${E(ME.name)}</b>, आपका खाता बन गया है।<br>${ME.role === "off" ? "यह खाता बंद है" : "डायरेक्टर की मंज़ूरी बाकी है"} — विक्रम जी से कहें कि ऐप के ☰ और → 👥 टीम में आपको मैनेजर/वेटर बनाएँ।<br><br><button class="btn" onclick="boot()">🔄 फिर देखें</button> <button class="btn gh" onclick="logout()">लॉगआउट</button></div>`; return }
@@ -212,7 +226,7 @@ async function boot() {
 }
 function draw() {
   if (!ME) return DB.mode === "local" ? login() : boot();
-  if (ME.role === "saathi") return; /* साथी का पन्ना saathiHome() खुद बनाता है */
+  if (ME.role === "saathi") return saathiDraw(); /* साथी के 4 टैब — sath.js */
   $("#me").textContent = "👤 " + ME.name; $("#demo").hidden = DB.mode !== "local"; setTimeout(updShow, 0);
   const KIT = ME && ME.role === "kitchen"; if (KIT && ["orders", "tables", "take"].includes(TAB)) TAB = "store"; /* रसोइया: ऑर्डर नहीं (पक्का बिल TMBill से) — सिर्फ़ स्टोर */
   $$("#tabs button").forEach(b => { b.classList.toggle("on", b.dataset.t === TAB); b.hidden = KIT && ["orders", "tables", "take"].includes(b.dataset.t) });

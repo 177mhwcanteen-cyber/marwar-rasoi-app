@@ -1,4 +1,5 @@
 // मारवाड़ रसोई — Firestore के नियम (विक्रम जी Firebase कंसोल → Firestore → Rules में पूरा चिपकाएँ)
+// v13 (16-11-2026, योजना-3 — एक ही बार Publish): डायरेक्टर दूसरों का खाता बनाए (staff create), hello (नंबर → नाम), साथी (saathi) ऑर्डर ले सके (status new) + रिमाइंडर/फोन-हाल/लोकेशन, tvisit/tvr (विज़िट), tprof (मेरा हाल), tmsg (संदेश), tkr में note/seen।
 // v12 (16-11-2026): + tkaam (📋 हमारी टीम के काम — VBE मैनेजर से, हर साथी सिर्फ़ अपने), tkr (साथी का जवाब); नई भूमिका saathi (सिर्फ़ अपने काम, रसोई का कुछ नहीं)।
 // v11 (15-11-2026): + cfav (बिना पासवर्ड: रेटिंग + पसंद), cname (ग्राहक का नाम-सुधार)। v9: + rlog (रिमाइंडर का हाल), cbook (ग्राहक-बही), talk (वॉकी-टॉकी), dev (फोन का हाल), cacc (ग्राहक-खाता)। v8: डायरेक्टर = पक्की (verified) ईमेल marwarrasoimr@gmail.com, या पुराना नंबर 9509553600 (मोबाइल + पिन)। लोकेशन सिर्फ़ डायरेक्टर देखे।
 rules_version = '2';
@@ -9,13 +10,17 @@ service cloud.firestore {
     function staff() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager', 'waiter', 'kitchen'])); }
     function mgr() { return request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager'])); }
     function d() { return request.resource.data; }
+    function saathi() { return request.auth != null && exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() == 'saathi'; }
+    function team() { return staff() || saathi(); }
+    function mine() { return request.auth != null && resource.data.em == request.auth.token.email; }
+    function myNew() { return request.auth != null && d().em == request.auth.token.email; }
     function istMin() { return math.floor(((request.time.toMillis() + 19800000) % 86400000) / 60000); }
 
     // ऑर्डर और टेबल की पुकार। ग्राहक: सिर्फ़ नया बना सके और अपना (id जानकर) पढ़ सके — सूची नहीं, बदलाव नहीं।
     match /orders/{id} {
       allow get: if true;
       allow list, update: if staff();
-      allow create: if staff() || (
+      allow create: if staff() || (saathi() && d().status == 'new' && d().kind == 'order' && d().by is string && d().items is list && d().items.size() <= 40) || (
         d().status == 'new' && d().by == 'customer' && d().kind in ['order', 'call'] && d().type in ['table', 'parcel', 'delivery']
         && d().keys().hasOnly(['kind', 'call', 'type', 'table', 'items', 'total', 'note', 'by', 'name', 'phone', 'addr', 'ts', 'status', 'log'])
         && (d().kind == 'call' || (istMin() >= 480 && istMin() < 1350)) // ग्राहक का ऑर्डर सिर्फ़ सुबह 8:00 से रात 10:30 (भारत का समय); पानी/वेटर/बिल की पुकार हर समय
@@ -31,7 +36,7 @@ service cloud.firestore {
     match /staff/{uid} {
       allow get: if request.auth != null && (request.auth.uid == uid || owner());
       allow list: if owner();
-      allow create: if request.auth != null && request.auth.uid == uid && (owner() || d().role == 'pending');
+      allow create: if owner() || (request.auth != null && request.auth.uid == uid && d().role == 'pending');
       allow update: if owner();
       allow delete: if false;
     }
@@ -40,7 +45,9 @@ service cloud.firestore {
     match /sitems/{id} { allow read, create, update: if staff(); allow delete: if false; }
     match /assets/{id} { allow read, create, update: if staff(); allow delete: if false; }
     match /checks/{id} { allow read, create, update: if staff(); allow delete: if false; }
-    match /conf/{id} { allow read, create, update: if staff(); allow delete: if false; }
+    match /conf/{id} { allow read: if team(); allow create, update: if staff(); allow delete: if false; }
+    // 🙏 नंबर → नाम (v13): लॉगिन में नंबर डालते ही नाम; id = sha256("mrh|मोबाइल") — सूची कोई नहीं; लिखे डायरेक्टर
+    match /hello/{h} { allow get: if true; allow list: if false; allow create, update: if owner(); allow delete: if false; }
     // 💰 उधारी — सिर्फ़ मालिक और मैनेजर
     match /udhar/{id} { allow read, create, update: if request.auth != null && (owner() || (exists(/databases/$(db)/documents/staff/$(request.auth.uid)) && role() in ['owner', 'manager'])); allow delete: if false; }
     // 👥 ग्राहकों का डेटा (TMBill से) और मालिक की टिप्पणी — मालिक + मैनेजर पढ़ें/संदेश भेजें; फ़ाइल सिर्फ़ मालिक चढ़ाए
@@ -63,7 +70,7 @@ service cloud.firestore {
     // 📒 ग्राहक-बही (v9, 15-11-2026): ऑर्डर पूरा करते समय मैनेजर/डायरेक्टर लिखें; पढ़े सिर्फ़ डायरेक्टर (ग्राहक संस्था के — मैनेजर बदलें तब भी)
     match /cbook/{m} { allow get: if mgr(); allow list: if owner(); allow create, update: if mgr(); allow delete: if false; }
     // 📱 फोन का हाल (v9): हर फोन अपना ही लिखे, डायरेक्टर पढ़े
-    match /dev/{uid} { allow create, update: if request.auth != null && request.auth.uid == uid && staff(); allow read: if owner(); allow delete: if false; }
+    match /dev/{uid} { allow create, update: if request.auth != null && request.auth.uid == uid && team(); allow read: if owner(); allow delete: if false; }
     // 🔐 ग्राहक-खाता (v9): id = sha256("mr|मोबाइल|पासवर्ड") — जो सही मोबाइल+पासवर्ड जाने वही अपना पढ़े; सूची कोई नहीं; लिखे सिर्फ़ डायरेक्टर
     match /cacc/{h} { allow get: if true; allow list: if false; allow create, update: if owner(); allow delete: if false; }
     // ✏️ ग्राहक ने अपना बिल का नाम ठीक किया (v10): ग्राहक सिर्फ़ नया बना सके (छोटा, सिर्फ़ 4 खाने); पढ़े/निपटाए सिर्फ़ डायरेक्टर
@@ -74,16 +81,24 @@ service cloud.firestore {
     // 🎙️ वॉकी-टॉकी (v9): टीम बोले/सुने; बदले-मिटे नहीं
     match /talk/{id} { allow read, create: if staff(); allow update, delete: if false; }
     // ⏰ रिमाइंडर का हाल (v9, 15-11-2026): टीम/APK लिखे (हो गया / टाला / छूटा), डायरेक्टर + मैनेजर पढ़ें; बदले-मिटे नहीं
-    match /rlog/{id} { allow create: if staff(); allow read: if mgr(); allow update, delete: if false; }
+    match /rlog/{id} { allow create: if team(); allow read: if mgr(); allow update, delete: if false; }
     // 📋 हमारी टीम के काम (v12): डायरेक्टर (VBE मैनेजर ऐप से) लिखे; हर साथी सिर्फ़ वही पढ़े जिसमें em = उसका लॉगिन; मिटे नहीं
-    match /tkaam/{id} { allow get, list: if owner() || (request.auth != null && resource.data.em == request.auth.token.email); allow create, update: if owner(); allow delete: if false; }
+    match /tkaam/{id} { allow get, list: if owner() || mine(); allow create, update: if owner(); allow delete: if false; }
+    // 🗺️ विज़िट (v13): tvisit = डायरेक्टर का दिया दिन का रास्ता (साथी अपना पढ़े); tvr = साथी का "पहुँचा/मिला/नहीं" (सिर्फ़ नया, अपने नाम से)
+    match /tvisit/{id} { allow get, list: if owner() || mine(); allow create, update: if owner(); allow delete: if false; }
+    match /tvr/{id} { allow create: if myNew() && d().keys().hasOnly(['vid', 'em', 'u', 'ans', 'note', 'at', 'by', 'lat', 'lng']) && d().ans in ['pahuncha', 'mila', 'nahi'] && d().at is int && (!('note' in d()) || d().note.size() <= 500);
+      allow read: if owner(); allow update, delete: if false; }
+    // ⭐ मेरा हाल (v13): VBE के गिने स्टार/रैंक — साथी अपना पढ़े, लिखे डायरेक्टर
+    match /tprof/{id} { allow get, list: if owner() || mine(); allow create, update: if owner(); allow delete: if false; }
+    // 💬 संदेश (v13): डायरेक्टर ↔ साथी; साथी सिर्फ़ अपने नाम से नया (fr == 's'); पढ़े अपना; बदले-मिटे नहीं
+    match /tmsg/{id} { allow get, list: if owner() || mine(); allow create: if owner() || (myNew() && d().fr == 's' && d().keys().hasOnly(['em', 'fr', 't', 'kid', 'at', 'by']) && d().t is string && d().t.size() <= 500 && d().at is int); allow update, delete: if false; }
     // 📋 साथी का जवाब (v12): सिर्फ़ अपने नाम से नया बनाए (हो गया / गया / नहीं + कारण); पढ़े डायरेक्टर; बदले-मिटे नहीं
     match /tkr/{id} { allow create: if request.auth != null && d().em == request.auth.token.email && d().keys().hasOnly(['kid', 'em', 'ans', 'note', 'at', 'by'])
-        && d().ans in ['done', 'gaya', 'nahi'] && d().kid is string && d().kid.size() <= 80 && d().at is int && (!('note' in d()) || d().note.size() <= 300);
+        && d().ans in ['done', 'gaya', 'nahi', 'note', 'seen'] && d().kid is string && d().kid.size() <= 80 && d().at is int && (!('note' in d()) || d().note.size() <= 500);
       allow read: if owner(); allow update, delete: if false; }
     // लोकेशन (APK की TrackService): अपना ही लिखे, सिर्फ़ डायरेक्टर पढ़े
-    match /live/{uid} { allow read: if owner(); allow write: if request.auth != null && request.auth.uid == uid && staff(); }
+    match /live/{uid} { allow read: if owner(); allow write: if request.auth != null && request.auth.uid == uid && team(); }
     // लोकेशन के बिंदु (रास्ता): टीम लिखे, मालिक पढ़े
-    match /trk/{id} { allow create, update: if staff(); allow read: if owner(); }
+    match /trk/{id} { allow create, update: if team(); allow read: if owner(); }
   }
 }

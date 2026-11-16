@@ -73,15 +73,6 @@ async function kaamSheet() {
   await kaamLoad(true); kaamDraw(host);
   b.addEventListener("click", e => { const x = e.target.closest("[data-tk]"); if (!x) return; if (x.dataset.tk === "ref") return kaamLoad(true).then(() => kaamDraw(host)); kaamAns(x.dataset.id, x.dataset.tk, host) });
 }
-/* 🧑‍🔧 साथी (रसोई से बाहर): पूरा ऐप = यही पन्ना */
-async function saathiHome() {
-  $("#me").textContent = "👤 " + ME.name; $("#tabs").style.display = "none"; const bar = $("#bar"); if (bar) bar.style.display = "none";
-  const pg = $("#pg"); pg.innerHTML = `<div class="empty">⏳ आपके काम आ रहे हैं…</div>`;
-  const paint = async f => { await kaamLoad(f); pg.innerHTML = `<div id="kmh">${vKaam()}</div><div class="mtg" style="margin-top:14px">${tl("upd", "🔄", "ऐप अपडेट")}${tl("psetup", "📲", "फोन की तैयारी")}${tl("logout", "🚪", "लॉगआउट")}</div>` };
-  await paint(true);
-  if (!pg.dataset.km) { pg.dataset.km = 1; pg.addEventListener("click", e => { const x = e.target.closest("[data-tk]"); if (!x) return; e.stopPropagation(); if (x.dataset.tk === "ref") return paint(true); kaamAns(x.dataset.id, x.dataset.tk, $("#kmh")) }, true) }
-  clearInterval(KM.iv); KM.iv = setInterval(() => !$("#sheet2") && paint(true), 120000);
-}
 (() => { const st = document.createElement("style"); st.textContent = `
 .tk{background:#fff;border-radius:14px;padding:10px 12px;margin:8px 0;box-shadow:0 1px 3px #0002;border-left:5px solid #b45309}
 .tk.urg{border-left-color:#dc2626}.tk.late{background:#fff7f7}.tk.dn{opacity:.75;border-left-color:#15803d}

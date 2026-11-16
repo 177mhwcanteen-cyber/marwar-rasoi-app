@@ -34,11 +34,11 @@ const mail = ph => String(ph).includes("@") ? String(ph).trim().toLowerCase() : 
 const AUTH = {
   u: LS.get("mr_auth", null),
   save(r, ph) { this.u = { rt: r.refreshToken || r.refresh_token, idt: r.idToken || r.id_token, uid: r.localId || r.user_id, exp: now() + (+(r.expiresIn || r.expires_in || 3600)) * 1000, ph: ph || (this.u || {}).ph }; LS.set("mr_auth", this.u) },
-  async call(what, ph, pin) {
-    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${what}?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: mail(ph), password: pin, returnSecureToken: true }) });
+  async call(what, ph, pin, em) {
+    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${what}?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: em || mail(ph), password: pin, returnSecureToken: true }) });
     const j = await r.json(); if (!r.ok) throw new Error((j.error || {}).message || "लॉगिन नहीं हुआ"); this.save(j, String(ph).includes("@") ? "" : String(ph).replace(/\D/g, "").slice(-10)); return this.u
   },
-  signIn(ph, pin) { return this.call("signInWithPassword", ph, pin) }, signUp(ph, pin) { return this.call("signUp", ph, pin) },
+  signIn(ph, pin, em) { return this.call("signInWithPassword", ph, pin, em) }, signUp(ph, pin) { return this.call("signUp", ph, pin) },
   /* 🎩 डायरेक्टर ईमेल से: खाते की ईमेल पक्की (verified) है या नहीं; नहीं तो पुष्टि का लिंक भेजें */
   async idt(what, body) { const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${what}?key=${FB.apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ idToken: this.u.idt }, body || {})) }); const j = await r.json(); if (!r.ok) throw new Error((j.error || {}).message || "नहीं हुआ"); return j },
   async verified() { return !!(((await this.idt("lookup")).users || [])[0] || {}).emailVerified }, sendVerify() { return this.idt("sendOobCode", { requestType: "VERIFY_EMAIL" }) },

@@ -229,6 +229,10 @@ public class OrderRingService extends Service {
             JSONObject f = d.optJSONObject("fields");
             if (f == null) f = new JSONObject();
             if ("signup".equals(sv(f, "src"))) continue; // नया खाता — ऑर्डर नहीं
+            // 🔔 16-11 (विक्रम जी): ऑनलाइन/नए ऑर्डर सिर्फ़ मैनेजर (rk=all); वेटर (rk=call) = सिर्फ़ टेबल की पुकार 💧🙋🧾
+            String rk = p.getString("rk", "all");
+            if ("none".equals(rk)) continue;
+            if ("call".equals(rk)) { String cl = sv(f, "call"); if (!"call".equals(sv(f, "kind")) || !("water".equals(cl) || "waiter".equals(cl) || "bill".equals(cl))) continue; }
             // ⏱ मालिक का फोन: "wait" सेकंड तक मैनेजर को मौका — उसके बाद भी ऑर्डर "new" रहे तभी यहाँ घंटी (मारवाड़ रसोई, 13-11-2026)
             int wait = p.getInt("wait", 0);
             if (wait > 0) {

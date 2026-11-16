@@ -20,6 +20,7 @@ async def fake(route):
     if "identitytoolkit" in u.netloc:
         if "lookup" in u.path: e = body["idToken"][4:]; return await J({"users": [{"email": e, "emailVerified": e in VER}]})
         if "sendOobCode" in u.path: SENT.append(body["idToken"][4:]); return await J({})
+        if "accounts:update" in u.path: e = body["idToken"][4:]; USERS[e]["pw"] = body["password"]; return await J({"idToken": "tok-" + e, "refreshToken": "rt-" + e, "localId": USERS[e]["uid"], "expiresIn": "3600"})
         e, pw = body["email"], body["password"]
         if "signUp" in u.path:
             if e in USERS: return await J({"error": {"message": "EMAIL_EXISTS"}}, 400)
@@ -41,7 +42,7 @@ async def fake(route):
     col, _, did = path.strip("/").partition("/")
     if rq.method == "POST":
         did = q["documentId"][0]; f = body["fields"]
-        if not is_staff and not (sv(f, "status") == "new" and sv(f, "by") == "customer"): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
+        if not is_staff and not (sv(f, "status") == "new" and (sv(f, "by") == "customer" or (role == "saathi" and sv(f, "kind") == "order"))): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
         DOCS[col + "/" + did] = f; return await J({"name": "x/" + col + "/" + did, "fields": f})
     key = col + "/" + did
     if rq.method == "GET":
@@ -95,7 +96,7 @@ async def main():
         await kb.wait_for_selector("#nm"); await kb.fill("#nm", "कैलाश भाई"); await kb.click("#nmo"); await kb.wait_for_selector("text=मंज़ूरी बाकी")
         await ow.click('[data-t="more"]'); await ow.click('[data-a="team"]'); u = USERS[KB]["uid"]; await ow.wait_for_selector(f'[data-u="{u}"][data-r="saathi"]'); await ow.click(f'[data-u="{u}"][data-r="saathi"]'); await ow.wait_for_timeout(300)
         ok(sv(DOCS["staff/" + u], "role") == "saathi", "डायरेक्टर ने साथी बनाया"); await ow.click("#sheet .sx")
-        await kb.click("text=फिर देखें"); await kb.wait_for_selector(".tk"); t = await kb.inner_text("#pg"); ok("कपिल जी से चेक" in t and "गैस" not in t and not await kb.locator("#tabs").is_visible(), "कैलाश भाई को सिर्फ़ अपना काम, टैब नहीं: " + t[:200])
+        await kb.click("text=फिर देखें"); await kb.wait_for_selector(".tk"); t = await kb.inner_text("#pg"); ok("कपिल जी से चेक" in t and "गैस" not in t and "मेरा दिन" in await kb.inner_text("#tabs") and "स्टोर" not in await kb.inner_text("#tabs"), "कैलाश भाई को सिर्फ़ अपना काम, साथी के टैब: " + t[:200])
         r = await kb.evaluate("fsQuery({from:[{collectionId:'orders'}],limit:5}).then(()=> 'खुल गया').catch(e=>'रुका')"); ok(r == "रुका", "साथी को ऑर्डर नहीं")
         await kb.click('[data-tk="nahi"]'); await kb.wait_for_selector("#kmn"); await kb.click("#kmo"); ok("कारण" in await kb.inner_text("#kme"), "नहीं पर कारण ज़रूरी")
         await kb.fill("#kmn", "कपिल जी शहर से बाहर"); await kb.click("#kmo"); await kb.wait_for_selector(".tksent"); R = [f for k, f in DOCS.items() if k.startswith("tkr/") and sv(f, "em") == KB]
@@ -104,7 +105,7 @@ async def main():
         cu = await page("customer"); await cu.goto(B + "t/"); await cu.wait_for_selector(".mc"); ok("Home order" in await cu.inner_text("#tno") and "Free home delivery" in await cu.inner_text("#hero") and "Kitchen starts at 7:15 PM" in await cu.inner_text("#hero"), "घर का ऑर्डर-पेज")
         await cu.click('.mc[data-id="rs-paneer-butter-masala"] .ad'); await cu.click("#bar"); await cu.click("#send"); await cu.wait_for_timeout(200); ok(await cu.locator("#send").is_visible(), "नाम के बिना नहीं जाता")
         await cu.fill("#hn", "Capt Sharma"); await cu.fill("#hp", "9876543210"); await cu.fill("#ha", "Q 12/B, 74 Armd"); await cu.click("#send"); await cu.wait_for_selector(".trk")
-        o = [f for k, f in DOCS.items() if k.startswith("orders/")]; ok(len(o) == 1 and sv(o[0], "type") == "delivery" and sv(o[0], "phone") == "9876543210", "ऑर्डर Firestore में")
+        o = [f for k, f in DOCS.items() if k.startswith("orders/") and sv(f, "by") == "customer"]; ok(len(o) == 1 and sv(o[0], "type") == "delivery" and sv(o[0], "phone") == "9876543210", "ऑर्डर Firestore में")
         await mg.wait_for_selector(".oc", timeout=9000); t = await mg.inner_text("#pg"); ok("डिलीवरी" in t and "Capt Sharma" in t and "Q 12/B" in t and "Paneer Butter Masala" in t and "₹190" in t, "मैनेजर को ऑर्डर: " + t[:160])
         ok(await mg.evaluate("BELL.on") is True, "मैनेजर की घंटी"); ok(await ow.evaluate("BELL.on") is False, "डायरेक्टर की घंटी अभी नहीं")
         await mg.screenshot(path=SH + "/rasoi-fs-manager.png")
@@ -113,6 +114,24 @@ async def main():
         await mg.click('.oc [data-a="cook"]'); await mg.wait_for_timeout(300); await mg.click('.oc [data-a="out"]'); await cu.wait_for_selector("text=Out for delivery", timeout=10000)
         # बाहर का आदमी ऑर्डर की सूची नहीं पढ़ सकता
         r = await cu.evaluate("fsQuery({from:[{collectionId:'orders'}],limit:5}).then(()=> 'खुल गया').catch(e=>'रुका')"); ok(r == "रुका", "ग्राहक को सूची नहीं")
+        # 🤝 योजना-3 चरण A: डायरेक्टर खुद खाता बनाए → पिन → नंबर डालते ही नाम → साथी के 4 टैब → साथी ऑर्डर ले → सिर्फ़ मैनेजर को घंटी → पिन बदलें → 🔁 नया पिन
+        ow.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
+        await ow.click('[data-t="more"]'); await ow.click('[data-a="team"]'); await ow.wait_for_selector("#mtf"); await ow.click("#mtf summary")
+        await ow.fill("#mtn", "मुकेश भाई"); await ow.fill("#mtp", "8949761842"); await ow.click("#mtgo"); await ow.wait_for_selector("#pinv"); PIN = (await ow.inner_text("#pinv")).strip()
+        MK = "8949761842@marwar-rasoi.app"; ok(len(PIN) == 6 and USERS[MK]["pw"] == PIN and sv(DOCS["staff/" + USERS[MK]["uid"]], "role") == "saathi", "डायरेक्टर ने खाता बनाया + पिन")
+        ok("8949761842" in await ow.get_attribute("#pinwa", "href") and PIN in urllib.parse.unquote(await ow.get_attribute("#pinwa", "href")), "पिन WhatsApp पर"); ok(sum(1 for k in DOCS if k.startswith("hello/")) == 1, "hello बना")
+        ok(AUTHU := await ow.evaluate("AUTH.u.ph"), "डायरेक्टर का लॉगिन वही रहा"); ok(AUTHU == "9509553600", "डायरेक्टर का लॉगिन वही: " + str(AUTHU)); await ow.click("#sheet .sx")
+        mk = await page("mukesh"); await mk.goto(B); await mk.wait_for_selector("#fgo"); await mk.fill("#fp", "8949761842"); await mk.wait_for_function("document.querySelector('#fhi').textContent.includes('मुकेश भाई')")
+        await mk.fill("#fk", PIN); await mk.click("#fgo"); await mk.wait_for_selector('#tabs [data-t="din"]'); t = await mk.inner_text("#tabs"); ok("ऑर्डर लें" in t and "मेरा हाल" in t and "टेबल" not in t, "साथी के 4 टैब: " + t)
+        await mk.click('#tabs [data-t="take"]'); await mk.wait_for_selector(".mc .ad"); await mk.click('[data-ty="parcel"]'); await mk.wait_for_selector(".mc .ad"); await mk.locator(".mc .ad").first.click(); await mk.click("#bar"); await mk.fill("#cn", "Sub Rathore"); await mk.click("#send")
+        await mk.wait_for_selector("#smine"); o = [f for k, f in DOCS.items() if k.startswith("orders/") and sv(f, "taker") == "मुकेश भाई"]; ok(len(o) == 1 and sv(o[0], "status") == "new", "साथी का ऑर्डर नया (मैनेजर स्वीकार करे)")
+        await mg.evaluate("DB.poll()"); await mg.wait_for_timeout(600); ok(await mg.evaluate("ringFor().some(o=>o.taker==='मुकेश भाई')"), "साथी के ऑर्डर पर मैनेजर को घंटी")
+        ok(await mg.evaluate("(()=>{const m=ME;ME={name:'x',role:'waiter'};const a=[ringOK({kind:'order'}),ringOK({kind:'call',call:'water'}),ringOK({kind:'call',call:'store'})];ME={name:'y',role:'saathi'};a.push(ringOK({kind:'call',call:'water'}));ME=m;return a.join()})()") == "false,true,false,false", "वेटर = सिर्फ़ टेबल-पुकार, साथी = कुछ नहीं")
+        await mk.click('#tabs [data-t="more"]'); await mk.click('[data-a="pin"]'); await mk.fill("#pn1", "246810"); await mk.fill("#pn2", "246810"); await mk.click("#pngo"); await mk.wait_for_timeout(300); ok(USERS[MK]["pw"] == "246810", "साथी ने पिन बदला")
+        await ow.click('[data-a="team"]'); u = USERS[MK]["uid"]; await ow.wait_for_selector(f'[data-up="{u}"]'); await ow.click(f'[data-up="{u}"]'); await ow.wait_for_selector("#pinv"); P2 = (await ow.inner_text("#pinv")).strip()
+        MK2 = "8949761842.2@marwar-rasoi.app"; ok(USERS.get(MK2, {}).get("pw") == P2 and sv(DOCS["staff/" + u], "role") == "off" and sv(DOCS["staff/" + USERS[MK2]["uid"]], "role") == "saathi", "🔁 नया पिन: नया खाता, पुराना बंद (मिटा नहीं)"); await ow.click("#sheet .sx")
+        mk2 = await page("mukesh2"); await mk2.goto(B); await mk2.wait_for_selector("#fgo"); await mk2.fill("#fp", "8949761842"); await mk2.wait_for_function("document.querySelector('#fhi').textContent.includes('मुकेश')"); await mk2.fill("#fk", P2); await mk2.click("#fgo")
+        await mk2.wait_for_selector('#tabs [data-t="din"]'); ok(await mk2.evaluate("AUTH.u.uid") == USERS[MK2]["uid"], "नए पिन से नया खाता खुला"); await mk.screenshot(path=SH + "/rasoi-saathi-take.png")
         # 🎩 डायरेक्टर ईमेल से: पहले पुष्टि का लिंक, पुष्टि के बाद डायरेक्टर
         dr = await page("dir"); await dr.goto(B); await dr.wait_for_selector("#fdir"); await dr.click("#fdir"); ok(await dr.input_value("#de") == DIR, "डायरेक्टर की ईमेल पहले से भरी")
         await dr.fill("#dk", "abc123"); await dr.click("#dgo"); await dr.wait_for_function("document.querySelector('#derr').textContent.includes('पुष्टि')"); ok(SENT == [DIR] and "staff/" + USERS[DIR]["uid"] not in DOCS, "बिना पुष्टि: लिंक गया, खाता नहीं खुला")
