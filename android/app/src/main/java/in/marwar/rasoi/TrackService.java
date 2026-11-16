@@ -37,6 +37,9 @@ public class TrackService extends Service implements LocationListener {
     static File file(Context c) { return new File(c.getFilesDir(), "trk.txt"); }
     static File upFile(Context c) { return new File(c.getFilesDir(), "trkup.txt"); }
     static volatile long lastUp = 0;
+    static volatile long beat = 0;      // पहरेदार (OrderRingService) देखता है: 10 मिनट से धड़कन नहीं = सेवा फिर चालू
+    static volatile int mode = 0;       // 0 रुके · 1 पैदल/धीरे · 2 गाड़ी
+    static volatile int kmh = 0;
     static volatile String upErr = "";
     private android.os.HandlerThread upTh;
     private android.os.Handler upH;
@@ -96,14 +99,14 @@ public class TrackService extends Service implements LocationListener {
         String who = intent != null && intent.getStringExtra("name") != null ? intent.getStringExtra("name") : "";
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm != null) {
-            NotificationChannel ch = new NotificationChannel(CH, "Marwar Rasoi", NotificationManager.IMPORTANCE_MIN);
+            NotificationChannel ch = new NotificationChannel(CH, "VBE मारवाड़", NotificationManager.IMPORTANCE_MIN);
             nm.createNotificationChannel(ch);
         }
         Intent open = new Intent(this, MainActivity.class);
         int pf = Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0;
         PendingIntent pi = PendingIntent.getActivity(this, 0, open, pf);
         Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH) : new Notification.Builder(this);
-        Notification n = b.setContentTitle("🍛 Marwar Rasoi चालू है")
+        Notification n = b.setContentTitle("VBE मारवाड़ — टीम से जुड़े")
             .setContentText("ऐप चालू है" + (who.isEmpty() ? "" : " · " + who))
             .setSmallIcon(getApplicationInfo().icon)
             .setContentIntent(pi)
@@ -151,19 +154,25 @@ public class TrackService extends Service implements LocationListener {
         // 45 सेकंड की खिड़की में सबसे सटीक रीडिंग ही दर्ज (दाएँ-बाएँ उछाल कम)
         if (best == null || (l.hasAccuracy() && l.getAccuracy() < best.getAccuracy())) best = l;
         { int hh = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY); if (hh < 6 || hh >= 23) return; } // 16-11 विक्रम जी: ड्यूटी सुबह 6 – रात 11, हर दिन
-        boolean moved = lastSavedLoc == null || l.distanceTo(lastSavedLoc) > Math.max(40f, Math.min(l.hasAccuracy() ? l.getAccuracy() : 100f, 150f));
+        // 🛵 डिलीवरी-ऐप जैसा (स्विगी/ओला का तरीका): रफ़्तार देखकर — गाड़ी (>11 किमी/घं) हर 15 से. या 80 मी के मोड़ पर, पैदल/धीरे हर 30 से., रुके हर 5 मिनट
+        float d = lastSavedLoc == null ? 9999f : l.distanceTo(lastSavedLoc);
+        boolean moved = lastSavedLoc == null || d > Math.max(40f, Math.min(l.hasAccuracy() ? l.getAccuracy() : 100f, 150f));
+        float spd = sharp && l.hasSpeed() ? l.getSpeed() : (lastSavedLoc != null && l.getTime() > lastSavedLoc.getTime() && moved ? d * 1000f / (l.getTime() - lastSavedLoc.getTime()) : 0f);
         if (moved) lastMoveAt = now;
-        if (now - lastSaved < (moved ? 45000L : 300000L)) return;
+        int md = spd > 3f && moved ? 2 : moved || now - lastMoveAt < 120000L ? 1 : 0;
+        long gap = md == 2 ? 15000L : md == 1 ? 30000L : 300000L;
+        boolean turn = sharp && lastSavedLoc != null && d > 80f && now - lastSaved >= 8000L;
+        if (now - lastSaved < gap && !turn) return;
         lastSaved = now;
         Location b = best; best = null;
-        lastLoc = b; lastSavedLoc = b;
+        lastLoc = b; lastSavedLoc = b; mode = md; kmh = Math.round(spd * 3.6f);
         tuneGps(now);
-        append(this, now + "," + String.format(java.util.Locale.US, "%.6f,%.6f,%d", b.getLatitude(), b.getLongitude(), Math.round(b.getAccuracy())));
+        append(this, now + "," + String.format(java.util.Locale.US, "%.6f,%.6f,%d,%d", b.getLatitude(), b.getLongitude(), Math.round(b.getAccuracy()), kmh));
     }
 
     /** रुके 5 मिनट से ज़्यादा = GPS हर 60 से.; चलते ही फिर हर 15 से. */
     private void tuneGps(long now) {
-        long want = now - lastMoveAt > 300000L ? 60000L : 15000L;
+        long want = mode == 2 ? 5000L : now - lastMoveAt > 300000L ? 60000L : 10000L;
         if (want == gpsMs || lm == null) return;
         gpsMs = want;
         try { lm.removeUpdates(this);
@@ -204,7 +213,8 @@ public class TrackService extends Service implements LocationListener {
         public void run() {
             try { askFresh(); } catch (Exception ignore) { }
             try { upload(); } catch (Exception ignore) { }
-            if (upH != null) upH.postDelayed(this, 120000);
+            beat = System.currentTimeMillis();
+            if (upH != null) upH.postDelayed(this, System.currentTimeMillis() - lastMoveAt < 180000L ? 45000L : 120000L); // चलते हों तो नक्शा हर 45 से. ताज़ा
         }
     };
 
@@ -243,7 +253,8 @@ public class TrackService extends Service implements LocationListener {
             }
             long now = System.currentTimeMillis();
             org.json.JSONObject lf = new org.json.JSONObject().put("name", Fs.str(name)).put("seen", Fs.intv(now)).put("running", Fs.bool(true)).put("bg", Fs.intv(now)).put("gps", Fs.bool(!gpsOff));
-            org.json.JSONArray mask = new org.json.JSONArray().put("name").put("seen").put("running").put("bg").put("gps");
+            lf.put("mode", Fs.intv(mode)).put("kmh", Fs.intv(kmh)).put("still", Fs.intv(lastMoveAt));
+            org.json.JSONArray mask = new org.json.JSONArray().put("name").put("seen").put("running").put("bg").put("gps").put("mode").put("kmh").put("still");
             Location l = lastLoc;
             if (l != null) {
                 lf.put("lat", Fs.num(Math.round(l.getLatitude() * 1e6) / 1e6)).put("lng", Fs.num(Math.round(l.getLongitude() * 1e6) / 1e6))

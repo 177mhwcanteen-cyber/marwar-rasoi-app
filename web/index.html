@@ -1,6 +1,6 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Marwar Rasoi — मैनेजर</title><meta name="theme-color" content="#ffffff"><link rel="icon" href="icon.png"><link rel="stylesheet" href="app.css"></head><body>
-<div class="top"><img class="lgo" src="icon.png" alt=""><div><h1>MARWAR RASOI</h1><small id="sub">Amenity Centre, Jalipa</small></div><button class="me" id="me">👤</button></div>
+<title>VBE मारवाड़ — हमारी टीम</title><meta name="theme-color" content="#2a0808"><link rel="icon" href="icon.png"><link rel="stylesheet" href="app.css"></head><body class="vbe">
+<div class="top"><img class="lgo" src="icon.png" alt=""><div><h1>VBE मारवाड़</h1><small id="sub">वंदे भारत टीम · मारवाड़ रसोई</small></div><button class="me" id="me">👤</button></div>
 <div class="demo" id="demo" hidden>डेमो मोड — डेटा अभी सिर्फ़ इसी फोन में है (Firebase जुड़ते ही सब फोन पर चलेगा)</div>
 <div class="pg" id="pg"></div>
 <button class="bar" id="bar" hidden></button>
@@ -155,7 +155,7 @@ const AERR = m => { m = String(m || ""); const t = /OPERATION_NOT_ALLOWED|ADMIN_
   : /Failed to fetch|NetworkError|Load failed/i.test(m) ? "इंटरनेट नहीं चल रहा — नेट देखकर फिर दबाएँ" : /PERMISSION|Missing or insufficient/i.test(m) ? "Firebase के नियम (Rules) रोक रहे हैं — नियम दोबारा चिपकाकर Publish करें" : "नहीं हुआ";
   return t + " · कोड: " + m.slice(0, 70) };
 function fsLogin(msg) {
-  const b = sheet(`<div class="lg"><img src="icon.png" alt=""><h3>Marwar Rasoi</h3><p>अपना मोबाइल नंबर और पिन डालें।<br>पहली बार आए हैं तो यही आपका नया पिन बन जाएगा।</p></div>
+  const b = sheet(`<div class="lg"><img src="icon.png" alt=""><h3>VBE मारवाड़</h3><p style="margin:-4px 0 8px;color:var(--mut);font-size:13px">वंदे भारत टीम · मारवाड़ रसोई</p><p>अपना मोबाइल नंबर और पिन डालें।<br>पहली बार आए हैं तो यही आपका नया पिन बन जाएगा।</p></div>
   <input class="in big" id="fp" inputmode="numeric" maxlength="10" autocomplete="username" placeholder="मोबाइल नंबर (10 अंक)" value="${E(LS.get("mr_ph", ""))}"><div id="fhi" class="hint" style="min-height:20px;font-weight:700;color:#15803d"></div>
   <input class="in big" id="fk" type="password" inputmode="numeric" autocomplete="current-password" placeholder="पिन (6 अंक या ज़्यादा)">
   <div class="err" id="ferr">${msg ? E(msg) : ""}</div><button class="btn big" id="fgo">आगे बढ़ें ›</button><button class="btn gh sm" id="fdir" style="width:100%;margin-top:8px">🎩 डायरेक्टर? ईमेल से लॉगिन</button>`);

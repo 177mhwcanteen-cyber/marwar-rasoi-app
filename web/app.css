@@ -182,3 +182,12 @@ body{background:var(--bg);font-size:15px;padding-bottom:calc(92px + env(safe-are
 .bars span i{border-radius:5px 5px 0 0}.hbar i{background:#ffe9ec}.rmc .chips span,.mrt span{background:#f2f2f7!important}
 .mc{border:0!important;border-radius:18px!important;box-shadow:var(--sh);overflow:hidden}.pill{font-weight:700}
 .sum.own>div,.sum>div{background:#fff!important}
+
+/* 🎨 16-11 VBE मारवाड़ (विक्रम जी ने लोगो 3 चुना) — स्टाफ ऐप का रूप: गहरा मैरून-काला ऊपर, सुनहरा नाम; नीचे की पट्टी में चुना टैब मैरून-सुनहरा। ग्राहक-पेज (t/) वैसा ही */
+.vbe .top{background:linear-gradient(135deg,#5a1111 0%,#2a0808 60%,#140404 100%)!important;color:#f8dc93!important;border-bottom:1px solid rgba(233,185,73,.35)!important;box-shadow:0 4px 18px rgba(30,5,5,.35)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+.vbe .top h1{color:#f8dc93!important;letter-spacing:.01em!important}.vbe .top small{color:rgba(248,220,147,.72)!important}
+.vbe .top .lgo{box-shadow:0 0 0 1.5px rgba(233,185,73,.7),0 4px 12px rgba(0,0,0,.4)!important}
+.vbe .top .me{background:rgba(233,185,73,.16)!important;color:#f8dc93!important}.vbe .top .me.upd{background:#e9b949!important;color:#2a0808!important}
+.vbe .tabs button.on{color:#7a1c1c;background:linear-gradient(135deg,rgba(233,185,73,.28),rgba(122,28,28,.12))!important}
+.vbe .btn{background:linear-gradient(135deg,#7a1c1c,#4a0e0e)}.vbe .btn.gh{background:#fff}.vbe .btn.ok{background:linear-gradient(135deg,#15803d,#0f5f2d)}
+.vbe .dhi{background:linear-gradient(135deg,#5a1111,#2a0808 70%)!important}.vbe .dhi .ring:after{background:#3a0b0b!important}

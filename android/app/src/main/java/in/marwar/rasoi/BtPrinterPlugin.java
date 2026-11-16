@@ -285,6 +285,7 @@ public class BtPrinterPlugin extends Plugin {
         try {
             Intent it = new Intent(getContext(), TrackService.class);
             it.putExtra("name", call.getString("name", ""));
+            getContext().getSharedPreferences("mr_trk", android.content.Context.MODE_PRIVATE).edit().putBoolean("on", true).apply(); // बूट/पहरेदार फिर चालू करें
             androidx.core.content.ContextCompat.startForegroundService(getContext(), it);
         } catch (Exception e) {
             JSObject o = trackState();
@@ -297,7 +298,7 @@ public class BtPrinterPlugin extends Plugin {
 
     @PluginMethod
     public void trackStop(PluginCall call) {
-        try { getContext().stopService(new Intent(getContext(), TrackService.class)); } catch (Exception ignore) { }
+        try { getContext().getSharedPreferences("mr_trk", android.content.Context.MODE_PRIVATE).edit().putBoolean("on", false).apply(); getContext().stopService(new Intent(getContext(), TrackService.class)); } catch (Exception ignore) { }
         call.resolve(trackState());
     }
 

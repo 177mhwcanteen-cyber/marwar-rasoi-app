@@ -190,6 +190,7 @@ public class OrderRingService extends Service {
             try { if (prefs(OrderRingService.this).getBoolean("orders", true)) poll(); } catch (Exception e) { lastErr = String.valueOf(e.getMessage()); }
             try { remind(); } catch (Exception ignore) { }
             try { kaam(); } catch (Exception ignore) { }
+            try { trkWatch(); } catch (Exception ignore) { }
             try { talk(); } catch (Exception ignore) { }
             try { health(); } catch (Exception ignore) { }
             h.postDelayed(this, every() * 1000L);
@@ -525,6 +526,16 @@ public class OrderRingService extends Service {
     /** 📋 हमारी टीम के काम (16-11-2026, योजना-3 चरण C): हर 60 सेकंड इस फोन वाले के tkaam (खुले) + tmsg (विक्रम जी के) + tvisit;
      *  नया = छोटी "टिक" + कंपन + ऊपर से उतरने वाली सूचना (6 से.); 🚨 ज़रूरी काम पर ही पूरी स्क्रीन + लंबी घंटी।
      *  रात 9 – सुबह 7 चुप (सुबह पहली जाँच पर बजेगा)। पहली बार सिर्फ़ याद, आवाज़ नहीं। नेट न हो तो अगली बार — कुछ छूटता नहीं। */
+    /** 📍 पहरेदार: जगह वाली सेवा 10 मिनट से चुप (फ़ोन ने बंद कर दी) = फिर चालू — साथी को कुछ नहीं करना */
+    private long trkW = 0;
+    private void trkWatch() {
+        long now = System.currentTimeMillis();
+        if (now - trkW < 300000L) return;
+        trkW = now;
+        if (!getSharedPreferences("mr_trk", Context.MODE_PRIVATE).getBoolean("on", false)) return;
+        if (TrackService.running && now - TrackService.beat < 600000L) return;
+        try { androidx.core.content.ContextCompat.startForegroundService(this, new Intent(this, TrackService.class)); } catch (Exception ignore) { }
+    }
     static final String CH_TICK = "mr_tick_v1";
     private long kFetch = 0;
     private JSONArray kq(String col, String em) throws Exception {
@@ -751,6 +762,9 @@ public class OrderRingService extends Service {
         @Override
         public void onReceive(Context c, Intent i) {
             try {
+                // 📍 16-11: फ़ोन दोबारा चालू हो तो जगह वाली सेवा भी अपने-आप (साथी को कुछ नहीं करना)
+                if (c.getSharedPreferences("mr_trk", Context.MODE_PRIVATE).getBoolean("on", false))
+                    try { androidx.core.content.ContextCompat.startForegroundService(c, new Intent(c, TrackService.class)); } catch (Exception ignore) { }
                 if (!prefs(c).getBoolean("on", false)) return;
                 androidx.core.content.ContextCompat.startForegroundService(c, new Intent(c, OrderRingService.class));
             } catch (Exception ignore) { }

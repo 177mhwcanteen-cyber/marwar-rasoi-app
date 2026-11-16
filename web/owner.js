@@ -8,6 +8,9 @@ const loadLib = () => window.L ? Promise.resolve() : new Promise((res, rej) => {
 const GEO = { GOOD: 60, places: [] };
 const gdist = (a, b) => { const r = x => x * Math.PI / 180, dA = r(b.lat - a.lat), dO = r(b.lng - a.lng), h = Math.sin(dA / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dO / 2) ** 2; return 12742000 * Math.asin(Math.min(1, Math.sqrt(h))) };
 const placeAt = p => { let best = null, bd = 1e9; GEO.places.forEach(x => { const d = gdist(p, x); if (d <= (+x.r || 150) && d < bd) { bd = d; best = x } }); return best };
+/* 🛵 चाल (नई APK लिखती है live.mode 0 रुके · 1 पैदल · 2 गाड़ी, kmh, still = आख़िरी बार कब चले) */
+const modeTxt = u => { if (!u || u.mode == null || now() - (u.ts || 0) > 15 * 60000) return ""; return u.mode == 2 ? "🚗 चल रहे" + (u.kmh ? " · " + u.kmh + " किमी/घं" : "") : u.mode == 1 ? "🚶 चल रहे" : "🛑 रुके" + (u.still ? " " + durHi(now() - u.still) + " से" : "") };
+const modeIc = u => !u || u.mode == null || now() - (u.ts || 0) > 15 * 60000 ? "" : u.mode == 2 ? "🚗 " : u.mode == 1 ? "🚶 " : "";
 const accTxt = a => !a ? "" : a <= GEO.GOOD ? "±" + a + " मी" : "~" + (a >= 1000 ? (a / 1000).toFixed(1) + " किमी" : a + " मी") + " अंदाज़ा";
 const durHi = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? Math.floor(m / 60) + " घं " + (m % 60 ? m % 60 + " मि" : "") : m + " मि" };
 function trkParse(docs, uid) { const P = [], Ev = [];
@@ -46,7 +49,7 @@ async function mapSheet() {
   const show = () => { lay.clearLayers(); const pts = [], D = sel ? trkDay(trk, sel) : null;
     if (!day) live.forEach(u => { const on = now() - (u.seen || u.ts || 0) < 15 * 60000, old = now() - (u.ts || 0) > 15 * 60000, coarse = (u.acc || 0) > GEO.GOOD;
       if (coarse) L.circle([u.lat, u.lng], { radius: Math.min(u.acc, 3000), color: "#64748b", weight: 1, fillOpacity: .08 }).addTo(lay);
-      L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "", html: `<div class="pin ${on && !old ? "" : "off"} ${sel === u.id ? "sel" : ""}">${E((u.name || "?").slice(0, 8))}${old ? " ⏳" : ""}</div>`, iconSize: [0, 0] }) }).addTo(lay).on("click", () => { sel = u.id; show() }); pts.push([u.lat, u.lng]) });
+      L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "", html: `<div class="pin ${on && !old ? "" : "off"} ${sel === u.id ? "sel" : ""}">${modeIc(u)}${E((u.name || "?").slice(0, 8))}${old ? " ⏳" : ""}</div>`, iconSize: [0, 0] }) }).addTo(lay).on("click", () => { sel = u.id; show() }); pts.push([u.lat, u.lng]) });
     if (D && D.P.length) { const good = D.P.filter(p => p.acc <= 300);
       if (good.length > 1) L.polyline(good.map(p => [p.lat, p.lng]), { color: "#b91c1c", weight: 4, opacity: .8 }).addTo(lay);
       D.P.filter(p => p.acc > 300).forEach(p => L.circleMarker([p.lat, p.lng], { radius: 4, color: "#94a3b8", weight: 1, fillOpacity: .5 }).addTo(lay));
@@ -55,7 +58,7 @@ async function mapSheet() {
     if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(.2), { maxZoom: 17 });
     const P = people(), lv = id => live.find(x => x.id === id);
     $("#ml", b).outerHTML = `<div id="ml">${P.map(([id, nm]) => { const u = lv(id), on = u && now() - (u.seen || u.ts || 0) < 15 * 60000, fa = u ? now() - (u.ts || 0) : 0, d1 = trkDay(trk, id);
-      return `<button class="row ${sel === id ? "sel" : ""}" data-mu="${id}"><span class="dot ${on ? "on" : ""}"></span><span style="flex:1">${E(nm)}<small style="display:block;color:var(--mut);font-weight:600">${day ? "" : u ? `${on ? "🟢 फ़ोन चालू" : "⚪ फ़ोन से हाल नहीं"} · ${agoHi(u.seen || u.ts || 0)} · 📍 ${fa > 15 * 60000 ? `<b style="color:#b91c1c">जगह ${agoHi(u.ts || 0).replace(" पहले", "")} पुरानी</b>` : "जगह " + agoHi(u.ts || 0)}${u.acc ? " · " + accTxt(u.acc) : ""}${u.gps === false ? " · <b style='color:#b91c1c'>GPS बंद</b>" : ""} · ` : ""}${d1.P.length ? `${hm(d1.P[0].ts)}–${hm(d1.P[d1.P.length - 1].ts)} · ${d1.stops.length} ठहराव · ${d1.km} किमी` : "इस दिन रास्ता नहीं"}</small></span><b>${sel === id ? "रास्ता ✓" : "रास्ता ›"}</b></button>` }).join("")}
+      return `<button class="row ${sel === id ? "sel" : ""}" data-mu="${id}"><span class="dot ${on ? "on" : ""}"></span><span style="flex:1">${E(nm)}<small style="display:block;color:var(--mut);font-weight:600">${day ? "" : u ? `${on ? "🟢 फ़ोन चालू" : "⚪ फ़ोन से हाल नहीं"} · ${agoHi(u.seen || u.ts || 0)} · 📍 ${fa > 15 * 60000 ? `<b style="color:#b91c1c">जगह ${agoHi(u.ts || 0).replace(" पहले", "")} पुरानी</b>` : "जगह " + agoHi(u.ts || 0)}${u.acc ? " · " + accTxt(u.acc) : ""}${u.gps === false ? " · <b style='color:#b91c1c'>GPS बंद</b>" : ""}${modeTxt(u) ? " · <b>" + modeTxt(u) + "</b>" : ""} · ` : ""}${d1.P.length ? `${hm(d1.P[0].ts)}–${hm(d1.P[d1.P.length - 1].ts)} · ${d1.stops.length} ठहराव · ${d1.km} किमी` : "इस दिन रास्ता नहीं"}</small></span><b>${sel === id ? "रास्ता ✓" : "रास्ता ›"}</b></button>` }).join("")}
       ${D ? tlHTML(D) : ""}<p class="hint">नाम दबाएँ → उस दिन का रास्ता, कहाँ कितनी देर रुके। ठहराव पर "📍 नाम दें" — अगली बार अपने-आप नाम दिखेगा। धूसर गोल = टावर वाली अंदाज़े की जगह।</p></div>` };
   const tlHTML = D => { const T = D.stops.map((s, i) => ({ t: s.start, h: `<div class="row" style="align-items:flex-start"><b style="background:#1d4ed8;color:#fff;border-radius:50%;min-width:24px;height:24px;display:grid;place-items:center;font-size:12px">${i + 1}</b><span style="flex:1">🕘 ${hm(s.start)}–${hm(s.end)} · ${durHi(s.end - s.start)}<small style="display:block;color:var(--mut)">${s.place ? "📍 " + E(s.place.n) : "बिना नाम की जगह"}${s.acc > GEO.GOOD ? " · " + accTxt(Math.round(s.acc)) : ""}</small></span>${s.place ? "" : `<button class="btn gh sm" data-pn="${i}">📍 नाम दें</button>`}</div>` }))
       .concat(D.gaps.map(g => ({ t: g.start, h: `<div class="row" style="color:#b91c1c"><span>📵 ${hm(g.start)}${g.end ? "–" + hm(g.end) : " से"} · ${g.why === "OFF" ? "GPS बंद किया" : g.why === "NOFIX" ? "जगह नहीं मिली" : g.why === "NOPERM" ? "लोकेशन की इजाज़त नहीं" : "ऐप बंद"}</span></div>` }))).sort((a, c) => a.t - c.t);
@@ -67,6 +70,9 @@ async function mapSheet() {
       try { if (FS_ON) await fsSet("conf", "places", { L: GEO.places, mt: now() }); else LS.set("mr_places", { L: GEO.places }); toast("📍 नाम सहेजा") } catch (er) { toast("नहीं सहेजा") } show(); return }
     const r = e.target.closest("[data-mu]"); if (r) { sel = sel === r.dataset.mu ? "" : r.dataset.mu; show() } });
   show(); setTimeout(() => map.invalidateSize(), 200);
+  /* 🔴 लाइव: शीट खुली रहे तो हर 30 से. नई जगह (स्विगी/ओला जैसे नक्शे पर चलता दिखे) */
+  const iv = setInterval(async () => { if (!$("#mp", b) || !$("#mp", b).isConnected) return clearInterval(iv); if (day) return;
+    try { live = (await COL("live").list()).filter(x => x.lat && x.lng); trk = await loadTrk(0); show() } catch (e) { } }, 30000);
 }
 
 /* ───────── 💰 उधारी: udhar/{id} {name, phone, note, ts, by, lines[{amt, ts, by, why}], pays[{amt, ts, by, how}]} — बाकी = Σlines − Σpays ───────── */

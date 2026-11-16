@@ -1,6 +1,6 @@
 {
   "appId": "in.marwar.rasoi",
-  "appName": "Marwar Rasoi",
+  "appName": "VBE मारवाड़",
   "webDir": "www",
   "android": { "allowMixedContent": false, "captureInput": true },
   "server": {

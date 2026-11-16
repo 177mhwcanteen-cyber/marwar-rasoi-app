@@ -46,6 +46,8 @@ async def main():
         await s.click('[data-a="map"]'); await s.wait_for_selector(".pin"); ok(await s.locator(".pin").count() == 2 and await s.locator(".pin.off").count() == 1, "दो साथी, एक बंद")
         t = await s.inner_text("#ml"); ok("स्वरूप सा" in t and "फ़ोन चालू" in t and "2 घंटे पहले" in t and "किमी" in t and "±12 मी" in t, "सूची (फ़ोन चालू / जगह की उम्र / किमी): " + t[:240])
         await s.click('[data-mu="u2"]'); await s.wait_for_timeout(300); t = await s.inner_text("#ml"); ok("दिन का रास्ता" in t and await s.locator(".pin.sel").count() == 1, "आज का रास्ता: " + t[:200])
+        await s.click("#sheet .sx"); await s.evaluate("(()=>{const L=LS.get('mr_c_live',[]);L[0].mode=2;L[0].kmh=32;LS.set('mr_c_live',L)})()"); await s.click('[data-a="map"]'); await s.wait_for_selector(".pin")
+        ok("32 किमी/घं" in await s.inner_text("#ml") and "🚗" in await s.inner_text("#mp"), "चलती गाड़ी दिखी (🚗 32 किमी/घं)")
         # पुरानी जगह: फ़ोन चालू पर जगह 3 घंटे पुरानी → लाल + ⏳ (16-11 विक्रम जी: "घर बैठा है, रसोई दिखा रहा")
         await s.click("#sheet .sx"); await s.evaluate("(()=>{const L=LS.get('mr_c_live',[]);L[0].ts=Date.now()-3*3600000;L[0].seen=Date.now()-60000;LS.set('mr_c_live',L)})()")
         await s.click('[data-a="map"]'); await s.wait_for_selector(".pin"); t = await s.inner_text("#ml"); ok("पुरानी" in t and "⏳" in await s.inner_text("#mp"), "पुरानी जगह साफ़ दिखी: " + t[:200]); await s.screenshot(path=SH + "/rasoi-map.png"); await s.click("#sheet .sx")
