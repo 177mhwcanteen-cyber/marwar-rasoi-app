@@ -8,7 +8,13 @@ async function mapSheet() {
     trk = FS_ON ? await fsQuery({ from: [{ collectionId: "trk" }], where: { fieldFilter: { field: { fieldPath: "date" }, op: "EQUAL", value: { stringValue: dkey() } } }, limit: 400 }) : (await COL("trk").list()).filter(x => x.date === dkey()) } catch (e) { return $("#ml", b).textContent = "नक्शा नहीं खुला — नेट देखें (" + String(e.message || e).slice(0, 60) + ")" }
   if (!live.length) { $("#mp", b).remove(); return $("#ml", b).innerHTML = "अभी किसी की लोकेशन नहीं आई।<br>साथी के फोन में APK हो, उसमें लॉगिन हो और लोकेशन की इजाज़त 'हमेशा' दी हो — तब यहाँ दिखेगा।" }
   map = L.map($("#mp", b), { attributionControl: true, zoomControl: false }); lay = L.layerGroup().addTo(map);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap · © CARTO" }).addTo(map);
+  /* 16-11: CARTO ने बिना चाबी के नक्शा बंद कर दिया ("API KEY REQUIRED") — अब बिना चाबी वाले: 🗺️ साधारण (OpenStreetMap) + 🛰️ सैटेलाइट (Esri) + दोनों के ऊपर नाम (Esri) — ऊपर दाएँ बटन से बदलें, चुनाव याद रहे */
+  const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }),
+    sat = L.layerGroup([L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 18, attribution: "© Esri, Maxar" }),
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 18 })]);
+  (LS.get("mr_maplayer", "map") === "sat" ? sat : osm).addTo(map);
+  L.control.layers({ "🗺️ नक्शा": osm, "🛰️ सैटेलाइट": sat }, null, { position: "topright", collapsed: false }).addTo(map);
+  map.on("baselayerchange", e => LS.set("mr_maplayer", e.layer === sat ? "sat" : "map"));
   const path = uid => trk.filter(t => t.uid === uid).sort((a, c) => a.hr - c.hr).flatMap(t => (t.pts || []).map(s => String(s).split(",")).filter(a => +a[0] && +a[1] && +a[2] && !(+a[3] > 60)).map(a => [+a[1], +a[2], +a[0]]));
   const show = sel => { lay.clearLayers(); const pts = [];
     live.forEach(u => { const on = now() - (u.seen || u.ts || 0) < 15 * 60000; L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "", html: `<div class="pin ${on ? "" : "off"} ${sel === u.id ? "sel" : ""}">${E((u.name || "?").slice(0, 8))}</div>`, iconSize: [0, 0] }) }).addTo(lay).on("click", () => show(u.id)); pts.push([u.lat, u.lng]) });
