@@ -13,7 +13,7 @@ async function tkStart(btn) { if (TK.rec) return;
     try { await COL("talk").add({ a, mt: mime.split(";")[0], d: Math.round(d * 10) / 10, by: ME.name, uid: ME.uid || "", role: ME.role, to: TK.to, toN: TK.toN }); toast("🎙️ " + (TK.to ? TK.toN + " को" : "पूरी टीम को") + " भेज दिया ✔"); tkLoad(true) } catch (e) { toast("नहीं गया — नेट देखें") } };
   TK.rec.start(); btn && btn.classList.add("on"); navigator.vibrate && navigator.vibrate(40); setTimeout(() => TK.rec && TK.rec.state === "recording" && TK.rec.stop(), 20000) }
 const tkStop = () => { if (TK.rec && TK.rec.state === "recording") TK.rec.stop() };
-const tkPlay = m => { try { (TK.au = TK.au || new Audio()).src = "data:" + (m.mt || "audio/webm") + ";base64," + m.a; TK.au.play().catch(() => 0) } catch (e) { } };
+const tkPlay = m => { if (document.hidden) return; try { (TK.au = TK.au || new Audio()).src = "data:" + (m.mt || "audio/webm") + ";base64," + m.a; TK.au.play().catch(() => 0) } catch (e) { } };
 /* Firestore में सिर्फ़ ज़रूरत भर पढ़ो (आवाज़ भारी होती है): ts > from, ज़्यादा से ज़्यादा n */
 const tkQ = (from, n, last) => (FS_ON ? fsQuery({ from: [{ collectionId: "talk" }], where: { fieldFilter: { field: { fieldPath: "ts" }, op: "GREATER_THAN", value: { integerValue: String(Math.floor(from)) } } }, orderBy: [{ field: { fieldPath: "ts" }, direction: last ? "DESCENDING" : "ASCENDING" }], limit: n })
   : COL("talk").list().then(L => L.filter(x => x.ts > from))).then(L => { L.sort((a, c) => a.ts - c.ts); return last ? L.slice(-n) : L.slice(0, n) });

@@ -68,7 +68,7 @@ function saathiDraw() {
   $("#me").textContent = "👤 " + ME.name; $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === TAB)); const pg = $("#pg");
   pg.innerHTML = TAB === "take" ? `<a class="btn gh sm" href="${MENU_PDF_URL}" target="_blank" rel="noopener" style="margin:0 6px 8px 0">📄 मेन्यू PDF</a><a class="btn gh sm" href="https://wa.me/?text=${encodeURIComponent("🍽️ मारवाड़ रसोई का मेन्यू: " + MENU_PDF_URL + "\nघर बैठे ऑर्डर: " + (CFG.homeUrl || ""))}" target="_blank" rel="noopener">📤 मेन्यू भेजें</a>${vTake()}${sMine()}`
     : TAB === "haal" ? (typeof vHaal === "function" ? vHaal() : `<div class="empty">⭐ आपका हाल जल्द यहाँ</div>`)
-    : TAB === "more" ? `<div class="mme"><b>👤 ${E(ME.name)}</b><span>हमारी टीम</span><button class="row" data-a="upd" id="updrow">🔄 ऐप अपडेट जाँचें · वर्ज़न ${window.MR_BUILD}</button></div><div class="mtg">${tl("pin", "🔑", "पिन बदलें")}${tl("psetup", "📲", "फोन की तैयारी")}${tl("logout", "🚪", "लॉगआउट")}</div>`
+    : TAB === "more" ? `<div class="mme"><b>👤 ${E(ME.name)}</b><span>हमारी टीम</span><button class="row" data-a="upd" id="updrow">🔄 ऐप अपडेट जाँचें · वर्ज़न ${window.MR_BUILD}</button></div><div class="mtg">${tl("ktone", "🎵", "काम की धुन / याद")}${tl("pin", "🔑", "पिन बदलें")}${tl("psetup", "📲", "फोन की तैयारी")}${tl("logout", "🚪", "लॉगआउट")}</div>`
     : `<div id="kmh">${typeof vDin === "function" ? vDin() : vKaam()}</div>`;
   if (TAB === "take") menuUI($("#menu"), TAKE.cart, bar, { pop: typeof popCount === "function" ? popCount : null });
   bar(); updShow() }

@@ -26,7 +26,9 @@ async function dinLoad() {
 }
 /* ── नया आया? टिक + चमक (एक बार) ── */
 const TICK = { n: 0, au: null };
-function tick() { if (dinQuiet()) return; TICK.n++; try { (TICK.au = TICK.au || new Audio("tones/tick.wav")).currentTime = 0; TICK.au.play().catch(() => 0) } catch (e) { } try { navigator.vibrate && navigator.vibrate([40, 60, 40]) } catch (e) { } }
+/* 🎧 योजना-4: वेब की आवाज़ सिर्फ़ जब ऐप सामने हो — पीछे से बजे तो WebView फ़ोन का पूरा ऑडियो-फ़ोकस ले लेता (YouTube रुक जाता); पीछे की आवाज़ APK देता है */
+const ktTone = () => LS.get("mr_ktone", "tick"), ktBlink = () => +LS.get("mr_kblink", 30);
+function tick() { if (dinQuiet() || document.hidden) return; TICK.n++; try { (TICK.au = TICK.au || new Audio("tones/" + ktTone() + ".wav")).currentTime = 0; TICK.au.play().catch(() => 0) } catch (e) { } try { navigator.vibrate && navigator.vibrate([40, 60, 40]) } catch (e) { } }
 function dinNew() {
   const known = LS.get("mr_known", null), cur = kmOpen().map(k => "k" + k.id + (k.rej ? "r" : "")).concat(DIN.M.filter(m => m.fr === "d").map(m => "m" + m.id), DIN.V.map(v => "v" + v.id + (v.mt || 0)));
   if (known === null) { LS.set("mr_known", cur); return }
@@ -123,3 +125,18 @@ function burstStars(n) { try { const w = document.createElement("div"); w.classN
 .rk{background:#fff;border-radius:14px;padding:4px 10px}.rk div{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9}.rk div:last-child{border:0}.rk b{flex:1}.rk span{color:#b45309;font-weight:700;font-size:13px}.rk .me{background:#fef3c7;margin:0 -10px;padding:7px 10px;border-radius:10px}
 .brst{position:fixed;left:50%;top:45%;z-index:60;pointer-events:none}.brst i{position:absolute;font-style:normal;font-size:20px;animation:bst 1.2s ease-out forwards;transform:rotate(var(--a)) translateY(0)}.brst b{position:absolute;transform:translate(-50%,-50%);font-size:26px;color:#b45309;animation:bsb 1.2s ease-out forwards}
 @keyframes bst{to{transform:rotate(var(--a)) translateY(calc(var(--d)*-1));opacity:0}}@keyframes bsb{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}30%{opacity:1;transform:translate(-50%,-80%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-140%)}}`; document.head.appendChild(st) })();
+
+/* 🎵 काम की धुन + 🔁 हर N मिनट याद (योजना-4, विक्रम जी: "उनके पास ऑप्शन हो कौन सी ट्यून रखें" · "संदेश थोड़ी देर में ब्लिंक हो") */
+function ktSheet() { const KT = ["tick"].concat(Array.from({ length: 20 }, (_, i) => "t" + (i + 1))), nm = t => t === "tick" ? "टिक (छोटी)" : (typeof TONES !== "undefined" && TONES[+t.slice(1)]) || t;
+  let T = ktTone(), B = ktBlink();
+  const b = sheet(`<h3>🎵 काम की धुन और याद</h3><p class="hint">नया काम या याद आने पर यही धुन बजेगी (फ़ोन साइलेंट हो तो सिर्फ़ कंपन)। YouTube/रील चल रही हो तो वह <b>बस थोड़ी धीमी</b> होगी, रुकेगी नहीं।</p>
+  <div class="tgrid" id="ktg">${KT.map(t => `<button data-kt="${t}" class="${T === t ? "on" : ""}">▶ ${E(nm(t))}</button>`).join("")}</div>
+  <div class="h" style="margin-top:12px">🔁 खुले काम हों तो हर कितनी देर याद दिलाए</div>
+  <div class="seg" id="kbs">${[[15, "15 मिनट"], [30, "30 मिनट"], [60, "1 घंटा"], [0, "बंद"]].map(([v, l]) => `<button data-kb="${v}" class="${B === v ? "on" : ""}">${l}</button>`).join("")}</div>
+  <p class="hint">सुबह 7 से रात 9 तक ही — ऊपर से सूचना उतरेगी, बत्ती चमकेगी, धुन एक बार।</p>
+  <button class="btn big" id="ksv">✅ सहेजें</button>`);
+  b.onclick = e => { const t = e.target.closest("[data-kt],[data-kb],#ksv"); if (!t) return;
+    if (t.dataset.kt) { T = t.dataset.kt; try { (TICK.pv = TICK.pv || new Audio()).src = "tones/" + T + ".wav"; TICK.pv.play().catch(() => 0) } catch (x) { } return $$("#ktg button", b).forEach(x => x.classList.toggle("on", x === t)) }
+    if (t.dataset.kb != null) { B = +t.dataset.kb; return $$("#kbs button", b).forEach(x => x.classList.toggle("on", x === t)) }
+    LS.set("mr_ktone", T); LS.set("mr_kblink", B); toast("✔ धुन: " + nm(T) + " · याद: " + (B ? "हर " + B + " मिनट" : "बंद")); closeSheet(); try { native() } catch (x) { } } }
+(() => { const st = document.createElement("style"); st.textContent = `.tk.urg:not(.dn),.tk.late:not(.dn){animation:kbl 9s ease-in-out infinite}@keyframes kbl{0%,86%,100%{box-shadow:0 1px 3px #0002}90%,96%{box-shadow:0 0 0 4px #ef444466}}`; document.head.appendChild(st) })();

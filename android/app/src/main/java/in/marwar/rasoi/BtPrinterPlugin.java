@@ -455,6 +455,9 @@ public class BtPrinterPlugin extends Plugin {
         e.putString("rk", call.getString("rk", "all")); // 🔔 all = हर ऑर्डर (मैनेजर) · call = सिर्फ़ टेबल की पुकार (वेटर) · none // 📋 हमारी टीम के काम: इस फोन वाले का लॉगिन (मोबाइल@marwar-rasoi.app)
         String tone = call.getString("tone", "");
         if (tone != null && tone.length() > 0) e.putString("tone", tone);
+        String kt = call.getString("ktone", ""); // 🎵 साथी की काम की धुन (योजना-4)
+        if (kt != null && kt.length() > 0) e.putString("ktone", kt);
+        if (call.getData().has("kblink")) e.putInt("kblink", call.getInt("kblink", 30)); // 🔁 हर N मिनट याद, 0 = बंद
         e.putBoolean("on", true);
         e.apply();
         Fs.set(getContext(), rt, call.getString("key", ""), call.getString("pid", ""), call.getString("name", null));

@@ -114,6 +114,13 @@ public class OrderRingService extends Service {
             tc.enableVibration(true); tc.setVibrationPattern(new long[]{0, 40, 60, 40}); tc.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             nm.createNotificationChannel(tc);
         } catch (Exception ignore) { }
+        try { // 🎵 v2: चैनल चुप — धुन हम खुद (साथी की चुनी) "धीमा करो" फ़ोकस से बजाते हैं; चमक (LED) + कंपन
+            NotificationChannel t2 = new NotificationChannel(CH_TICK2, "टीम: नया काम / याद", NotificationManager.IMPORTANCE_HIGH);
+            t2.setSound(null, null); t2.enableVibration(true); t2.setVibrationPattern(new long[]{0, 60, 80, 60}); t2.enableLights(true); t2.setLightColor(0xFFE0B03C);
+            t2.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            nm.createNotificationChannel(t2);
+            nm.deleteNotificationChannel(CH_TICK);
+        } catch (Exception ignore) { }
         NotificationChannel w = new NotificationChannel(CH_WATCH, "ऑर्डर की घंटी चालू", NotificationManager.IMPORTANCE_MIN);
         w.setShowBadge(false);
         nm.createNotificationChannel(w);
@@ -408,11 +415,12 @@ public class OrderRingService extends Service {
             tmp = new MediaPlayer();
             tmp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
             tmp.setDataSource(fl.getAbsolutePath());
-            tmp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() { public void onCompletion(MediaPlayer m) { try { m.release(); } catch (Exception ignore) { } tmp = null; } });
+            tmp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() { public void onCompletion(MediaPlayer m) { try { m.release(); } catch (Exception ignore) { } tmp = null; focusOff(talkFocus); talkFocus = null; } });
             tmp.prepare();
+            talkFocus = focusOn(false);
             tmp.start();
-            h.postDelayed(new Runnable() { public void run() { try { if (tmp != null) { tmp.release(); tmp = null; } } catch (Exception ignore) { } } }, 30000);
-        } catch (Exception e) { try { if (tmp != null) tmp.release(); } catch (Exception ignore) { } tmp = null; }
+            h.postDelayed(new Runnable() { public void run() { try { if (tmp != null) { tmp.release(); tmp = null; } } catch (Exception ignore) { } focusOff(talkFocus); talkFocus = null; } }, 30000);
+        } catch (Exception e) { try { if (tmp != null) tmp.release(); } catch (Exception ignore) { } tmp = null; focusOff(talkFocus); talkFocus = null; }
     }
 
     /* ───────── ⏰ रिमाइंडर ───────── */
@@ -537,6 +545,7 @@ public class OrderRingService extends Service {
         try { androidx.core.content.ContextCompat.startForegroundService(this, new Intent(this, TrackService.class)); } catch (Exception ignore) { }
     }
     static final String CH_TICK = "mr_tick_v1";
+    static final String CH_TICK2 = "mr_tick_v2";
     private long kFetch = 0;
     private JSONArray kq(String col, String em) throws Exception {
         String q = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"" + col + "\"}],\"where\":{\"fieldFilter\":{\"field\":{\"fieldPath\":\"em\"},\"op\":\"EQUAL\",\"value\":{\"stringValue\":" + JSONObject.quote(em) + "}}},\"limit\":200}}";
@@ -555,7 +564,8 @@ public class OrderRingService extends Service {
         if (night && !first) return;
         String seen = kp.getString("seen", ",");
         StringBuilder ns = new StringBuilder(",");
-        String newT = null; int cnt = 0; boolean urgent = false;
+        String newT = null; int cnt = 0; boolean urgent = false; int openN = 0; java.util.ArrayList<String> tops = new java.util.ArrayList<>();
+        String ktone = prefs(this).getString("ktone", "tick");
         String[] cols = {"tkaam", "tmsg", "tvisit"};
         for (String col : cols) {
             JSONArray arr;
@@ -574,6 +584,7 @@ public class OrderRingService extends Service {
                     boolean rej = Boolean.TRUE.equals(rj) || (rj instanceof Double && (Double) rj > 0);
                     ur = Boolean.TRUE.equals(dec(f.optJSONObject("urgent")));
                     key = "k" + id + (rej ? "~r" : "");
+                    openN++; String tt = (ur ? "🚨 " : "") + (t == null ? "" : String.valueOf(t)); if (ur) tops.add(0, tt); else tops.add(tt);
                     txt = (ur ? "🚨 " : "") + (rej ? "↺ फिर देखें: " : "📋 ") + (t == null ? "नया काम" : String.valueOf(t));
                 } else if (col.equals("tmsg")) {
                     if (!"d".equals(sv(f, "fr"))) continue;
@@ -586,9 +597,28 @@ public class OrderRingService extends Service {
             }
         }
         kp.edit().putString("seen", ns.toString()).putBoolean("init2", true).apply();
+        /* 🔁 हर N मिनट याद (साथी चुने: 15/30/60/बंद; डिफ़ॉल्ट 30) — खुले काम हों तो ऊपर उतरती सूचना + चमक + धुन एक बार; रात 9–सुबह 7 नहीं */
+        int kb = prefs(this).getInt("kblink", 30);
+        long lb = kp.getLong("lblink", 0);
+        if (!first && cnt == 0 && kb > 0 && !night && openN > 0 && now - lb >= kb * 60000L) {
+            kp.edit().putLong("lblink", now).apply();
+            if (lb > 0) {
+                StringBuilder bt = new StringBuilder();
+                for (int i = 0; i < Math.min(3, tops.size()); i++) bt.append("• ").append(tops.get(i)).append("\n");
+                Notification.Builder rb = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_TICK2) : new Notification.Builder(this);
+                rb.setContentTitle("📋 याद: आपके " + openN + " काम बाकी").setContentText(tops.isEmpty() ? "हमारी टीम के काम" : tops.get(0))
+                        .setStyle(new Notification.BigTextStyle().bigText(bt.toString() + (openN > 3 ? "+ " + (openN - 3) + " और\n" : "") + "\nकाम होते ही \"✅ हो गया\" दबाएँ — विक्रम जी तक तुरंत पहुँचता है"))
+                        .setSmallIcon(R.mipmap.ic_launcher).setPriority(Notification.PRIORITY_HIGH).setVisibility(Notification.VISIBILITY_PUBLIC)
+                        .setAutoCancel(true).setOnlyAlertOnce(false).setContentIntent(openApp(7, false)).setCategory(Notification.CATEGORY_REMINDER)
+                        .setLights(0xFFE0B03C, 600, 900);
+                if (Build.VERSION.SDK_INT >= 26) rb.setTimeoutAfter(kb * 60000L);
+                try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 2, rb.build()); } catch (Exception ignore) { }
+                kplay(ktone, 1);
+            }
+        } else if (lb == 0 || cnt > 0) kp.edit().putLong("lblink", now).apply();
         if (first || cnt == 0) return;
         String body = newT + (cnt > 1 ? "\n+ " + (cnt - 1) + " और" : "");
-        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, urgent ? CH_REM : CH_TICK) : new Notification.Builder(this);
+        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, urgent ? CH_REM : CH_TICK2) : new Notification.Builder(this);
         b.setContentTitle(urgent ? "🚨 ज़रूरी काम — हमारी टीम" : "हमारी टीम" + (cnt > 1 ? " · " + cnt + " नए" : ""))
                 .setContentText(newT)
                 .setStyle(new Notification.BigTextStyle().bigText(body))
@@ -600,8 +630,7 @@ public class OrderRingService extends Service {
         if (urgent) b.setCategory(Notification.CATEGORY_ALARM).setFullScreenIntent(openApp(8, false), true);
         else b.setCategory(Notification.CATEGORY_MESSAGE).setTimeoutAfter(6 * 3600000L);
         try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 1, b.build()); } catch (Exception ignore) { }
-        if (urgent) remSound("t11");
-        else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) { try { int rid = getResources().getIdentifier("tick", "raw", getPackageName()); if (rid != 0) MediaPlayer.create(this, rid).start(); } catch (Exception ignore) { } }
+        kplay(ktone, urgent ? 3 : 2); /* पहले: ज़रूरी पर 40 से. की लूप घंटी — अब साथी की धुन 3 बार, रील रुके नहीं */
     }
 
     private void fire(String key) {
@@ -638,6 +667,7 @@ public class OrderRingService extends Service {
             rmp.setDataSource(this, u);
             rmp.setLooping(true);
             rmp.prepare();
+            remFocus = focusOn(false);
             rmp.start();
             if (vib != null) {
                 long[] pat = new long[]{0, 500, 300, 500, 1500};
@@ -649,7 +679,7 @@ public class OrderRingService extends Service {
 
     private synchronized void remStop() {
         try { if (rmp != null) { rmp.stop(); rmp.release(); } } catch (Exception ignore) { }
-        rmp = null;
+        rmp = null; focusOff(remFocus); remFocus = null;
     }
 
     /** ✅ हो गया / ⏰ बाद में / छूटा → rlog (डायरेक्टर देखे) */
@@ -687,6 +717,62 @@ public class OrderRingService extends Service {
         return u;
     }
 
+    /* 🎧 योजना-4 (16-11, विक्रम जी: "साथी YouTube रील देखते हैं तो आवाज़ बंद हो जाती है"): हर आवाज़ से पहले फ़ोकस माँगो,
+       बजते ही लौटाओ — छोटी धुन = "धीमा करो" (रील धीमी होकर फिर चले), अलार्म = "थोड़ी देर रुको" (फिर अपने-आप चले)। */
+    private final AudioManager.OnAudioFocusChangeListener afl = new AudioManager.OnAudioFocusChangeListener() { public void onAudioFocusChange(int c) { } };
+    private Object focusOn(boolean duck) {
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            int g = duck ? AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK : AudioManager.AUDIOFOCUS_GAIN_TRANSIENT;
+            if (Build.VERSION.SDK_INT >= 26) {
+                android.media.AudioFocusRequest r = new android.media.AudioFocusRequest.Builder(g)
+                        .setAudioAttributes(new AudioAttributes.Builder().setUsage(duck ? AudioAttributes.USAGE_NOTIFICATION : AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                        .setOnAudioFocusChangeListener(afl).build();
+                am.requestAudioFocus(r);
+                return r;
+            }
+            am.requestAudioFocus(afl, duck ? AudioManager.STREAM_NOTIFICATION : AudioManager.STREAM_ALARM, g);
+            return afl;
+        } catch (Exception e) { return null; }
+    }
+    private void focusOff(Object r) {
+        if (r == null) return;
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (Build.VERSION.SDK_INT >= 26 && r instanceof android.media.AudioFocusRequest) am.abandonAudioFocusRequest((android.media.AudioFocusRequest) r);
+            else am.abandonAudioFocus(afl);
+        } catch (Exception ignore) { }
+    }
+    private Object ringFocus, remFocus, talkFocus, kFocus;
+
+    /** 🎵 काम की धुन (साथी ने चुनी: tick या t1..t20) — times बार, सूचना की आवाज़ में (फ़ोन साइलेंट = चुप), 20 से. से ज़्यादा नहीं */
+    private MediaPlayer kmp;
+    private synchronized void kplay(String t, final int times) {
+        try { if (kmp != null) { kmp.release(); kmp = null; } } catch (Exception ignore) { }
+        focusOff(kFocus); kFocus = null;
+        try {
+            int id = 0;
+            if (t != null && t.matches("t\\d{1,2}")) id = getResources().getIdentifier("order_" + t, "raw", getPackageName());
+            if (id == 0) id = getResources().getIdentifier("tick", "raw", getPackageName());
+            if (id == 0) return;
+            kFocus = focusOn(true);
+            kmp = new MediaPlayer();
+            kmp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            kmp.setDataSource(this, Uri.parse("android.resource://" + getPackageName() + "/" + id));
+            kmp.prepare();
+            final int[] left = {Math.max(1, times)};
+            kmp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() { public void onCompletion(MediaPlayer m) {
+                if (--left[0] > 0) { try { m.seekTo(0); m.start(); return; } catch (Exception ignore) { } }
+                kstop(); } });
+            kmp.start();
+            h.postDelayed(new Runnable() { public void run() { kstop(); } }, 20000);
+        } catch (Exception e) { kstop(); }
+    }
+    private synchronized void kstop() {
+        try { if (kmp != null) { kmp.release(); } } catch (Exception ignore) { }
+        kmp = null; focusOff(kFocus); kFocus = null;
+    }
+
     private synchronized void startSound() {
         if (ringing) return;
         ringing = true;
@@ -703,6 +789,7 @@ public class OrderRingService extends Service {
             mp.setDataSource(this, tone());
             mp.setLooping(true);
             mp.prepare();
+            ringFocus = focusOn(false);
             mp.start();
         } catch (Exception e) {
             try { if (mp != null) mp.release(); } catch (Exception ignore) { }
@@ -720,7 +807,7 @@ public class OrderRingService extends Service {
     private synchronized void stopSound() {
         ringing = false;
         try { if (mp != null) { mp.stop(); mp.release(); } } catch (Exception ignore) { }
-        mp = null;
+        mp = null; focusOff(ringFocus); ringFocus = null;
         try { if (vib != null) vib.cancel(); } catch (Exception ignore) { }
         try {
             if (oldVol >= 0) { ((AudioManager) getSystemService(Context.AUDIO_SERVICE)).setStreamVolume(AudioManager.STREAM_ALARM, oldVol, 0); oldVol = -1; }
