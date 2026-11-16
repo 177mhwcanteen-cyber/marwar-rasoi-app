@@ -1,0 +1,11 @@
+# नियम (firestore.rules) Firebase में लगे या नहीं — बिना लॉगिन जाँच (Claude के सैंडबॉक्स से Firebase नहीं खुलता)
+# hello/x get: v13 में खुला (404 = लगे), पुराने में 403। tkaam/x get बिना लॉगिन: v12+ में 403 (नियम है), पहले भी 403 — इसलिए hello ही पक्की निशानी।
+name: Rules check
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          B="https://firestore.googleapis.com/v1/projects/marwar-rasoi-24d56/databases/(default)/documents"
+          for p in hello/zz-check tkaam/zz-check orders/zz-check live/zz-check; do echo "RULES $p $(curl -s -o /dev/null -w '%{http_code}' "$B/$p")"; done
