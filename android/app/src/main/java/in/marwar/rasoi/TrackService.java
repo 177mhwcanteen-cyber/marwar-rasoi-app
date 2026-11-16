@@ -41,6 +41,11 @@ public class TrackService extends Service implements LocationListener {
     private android.os.HandlerThread upTh;
     private android.os.Handler upH;
     private Location lastLoc = null;
+    // 16-11 (विक्रम जी: "घर बैठा है फिर भी रसोई दिखा रहा"): चलते हों तो हर 45 से., रुके हों तो हर 5 मिनट; रुके रहने पर GPS धीमा (बैटरी);
+    // घर/अंदर GPS न मिले तो वाई-फ़ाई (fused) / टावर (±2.5 किमी तक, "अंदाज़ा" बनकर) — पुरानी जगह अटकी न रहे; 5 मिनट नई जगह न आए तो खुद एक बार माँगो
+    private Location lastSavedLoc = null;
+    private long lastMoveAt = 0, lastAsk = 0;
+    private long gpsMs = 15000L;
     private boolean gpsOff = false;
 
     static synchronized void appendUp(Context c, String line) {
@@ -124,6 +129,8 @@ public class TrackService extends Service implements LocationListener {
                     lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15000L, 0f, this, Looper.getMainLooper());
                 if (lm.getAllProviders().contains(LocationManager.NETWORK_PROVIDER))
                     lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 60000L, 0f, this, Looper.getMainLooper());
+                if (Build.VERSION.SDK_INT >= 31 && lm.getAllProviders().contains("fused"))
+                    lm.requestLocationUpdates("fused", 30000L, 0f, this, Looper.getMainLooper());
                 running = true;
                 append(this, System.currentTimeMillis() + ",START");
             } catch (Exception e) {
@@ -137,17 +144,46 @@ public class TrackService extends Service implements LocationListener {
     public void onLocationChanged(Location l) {
         long now = System.currentTimeMillis();
         boolean gps = LocationManager.GPS_PROVIDER.equals(l.getProvider());
-        // नेटवर्क (टावर) वाली जगह सिर्फ़ तब, जब 3 मिनट से GPS न मिला हो — और ±150 मी. से खराब हो तो बिल्कुल नहीं
-        if (!gps && (now - lastFix < 180000L || !l.hasAccuracy() || l.getAccuracy() > 150f)) return;
-        if (gps) lastFix = now;
+        boolean sharp = gps || (l.hasAccuracy() && l.getAccuracy() <= 60f);
+        // नेटवर्क/वाई-फ़ाई वाली जगह सिर्फ़ तब, जब 3 मिनट से पक्की (GPS/±60 मी) न मिली हो — और ±2.5 किमी से खराब हो तो बिल्कुल नहीं
+        if (!sharp && (now - lastFix < 180000L || !l.hasAccuracy() || l.getAccuracy() > 2500f)) return;
+        if (sharp) lastFix = now;
         // 45 सेकंड की खिड़की में सबसे सटीक रीडिंग ही दर्ज (दाएँ-बाएँ उछाल कम)
         if (best == null || (l.hasAccuracy() && l.getAccuracy() < best.getAccuracy())) best = l;
         { int hh = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY); if (hh < 6 || hh >= 23) return; } // 16-11 विक्रम जी: ड्यूटी सुबह 6 – रात 11, हर दिन
-        if (now - lastSaved < 45000L) return;
+        boolean moved = lastSavedLoc == null || l.distanceTo(lastSavedLoc) > Math.max(40f, Math.min(l.hasAccuracy() ? l.getAccuracy() : 100f, 150f));
+        if (moved) lastMoveAt = now;
+        if (now - lastSaved < (moved ? 45000L : 300000L)) return;
         lastSaved = now;
         Location b = best; best = null;
-        lastLoc = b;
+        lastLoc = b; lastSavedLoc = b;
+        tuneGps(now);
         append(this, now + "," + String.format(java.util.Locale.US, "%.6f,%.6f,%d", b.getLatitude(), b.getLongitude(), Math.round(b.getAccuracy())));
+    }
+
+    /** रुके 5 मिनट से ज़्यादा = GPS हर 60 से.; चलते ही फिर हर 15 से. */
+    private void tuneGps(long now) {
+        long want = now - lastMoveAt > 300000L ? 60000L : 15000L;
+        if (want == gpsMs || lm == null) return;
+        gpsMs = want;
+        try { lm.removeUpdates(this);
+            if (lm.getAllProviders().contains(LocationManager.GPS_PROVIDER)) lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsMs, 0f, this, Looper.getMainLooper());
+            if (lm.getAllProviders().contains(LocationManager.NETWORK_PROVIDER)) lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 60000L, 0f, this, Looper.getMainLooper());
+            if (Build.VERSION.SDK_INT >= 31 && lm.getAllProviders().contains("fused")) lm.requestLocationUpdates("fused", gpsMs < 30000L ? 30000L : gpsMs, 0f, this, Looper.getMainLooper());
+        } catch (Exception ignore) { }
+    }
+
+    /** 5 मिनट से नई जगह नहीं आई (घर के अंदर, GPS नहीं) → वाई-फ़ाई/टावर से एक बार ताज़ा जगह माँगो */
+    @SuppressWarnings("deprecation")
+    private void askFresh() {
+        long now = System.currentTimeMillis();
+        if (lm == null || now - lastAsk < 240000L) return;
+        if (lastLoc != null && now - lastLoc.getTime() < 300000L) return;
+        lastAsk = now;
+        try {
+            if (Build.VERSION.SDK_INT >= 31 && lm.getAllProviders().contains("fused")) lm.requestSingleUpdate("fused", this, Looper.getMainLooper());
+            if (lm.getAllProviders().contains(LocationManager.NETWORK_PROVIDER)) lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, this, Looper.getMainLooper());
+        } catch (Exception ignore) { }
     }
 
     @Override
@@ -166,6 +202,7 @@ public class TrackService extends Service implements LocationListener {
     /* ☁️ ऐप बंद हो तब भी हर 2 मिनट जगह सीधे Firestore में (trk/<दिन_uid_घंटा> + live/<uid>) — मालिक को अभी की जगह दिखे */
     private final Runnable upLoop = new Runnable() {
         public void run() {
+            try { askFresh(); } catch (Exception ignore) { }
             try { upload(); } catch (Exception ignore) { }
             if (upH != null) upH.postDelayed(this, 120000);
         }

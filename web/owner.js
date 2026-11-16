@@ -2,28 +2,73 @@
    नियम: docs/होटल-प्रबंधन-योजना-प्रॉम्प्ट.txt। लोकेशन APK की TrackService लिखती है: live/{uid} {name,lat,lng,acc,ts,seen,running} · trk/{तारीख_uid_घंटा} {uid,name,date,hr,pts["ts,lat,lng,…"]} */
 const agoHi = ts => { const m = Math.floor((now() - ts) / 60000); return m < 1 ? "अभी" : m < 60 ? m + " मिनट पहले" : m < 1440 ? Math.floor(m / 60) + " घंटे पहले" : Math.floor(m / 1440) + " दिन पहले" };
 const loadLib = () => window.L ? Promise.resolve() : new Promise((res, rej) => { const c = document.createElement("link"); c.rel = "stylesheet"; c.href = "lib/leaflet.css"; document.head.appendChild(c); const s = document.createElement("script"); s.src = "lib/leaflet.js"; s.onload = res; s.onerror = rej; document.head.appendChild(s) });
+/* 🗺️ टीम कहाँ है + दिन का रास्ता (16-11, विक्रम जी: "कहाँ-कहाँ गया रिकॉर्ड हो, घर बैठा हो तो रसोई न दिखाए") — सब्ज़ी एक्सप्रेस (se-route.js) का तरीका:
+   पक्की (GPS/वाई-फ़ाई ±60 मी) और अंदाज़े वाली (टावर) जगह अलग; उछाल हटाओ (cleanPts); 4+ मिनट एक जगह = ठहराव (findStops); बीच का सफ़र किमी में;
+   📵 छेद = ऐप/GPS बंद या जगह नहीं मिली; ठहराव को नाम दो (conf/places → अगली बार अपने-आप "74 Armd पर")। "चालू" = फ़ोन से हाल आया; "जगह N मिनट पुरानी" अलग दिखती है। */
+const GEO = { GOOD: 60, places: [] };
+const gdist = (a, b) => { const r = x => x * Math.PI / 180, dA = r(b.lat - a.lat), dO = r(b.lng - a.lng), h = Math.sin(dA / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dO / 2) ** 2; return 12742000 * Math.asin(Math.min(1, Math.sqrt(h))) };
+const placeAt = p => { let best = null, bd = 1e9; GEO.places.forEach(x => { const d = gdist(p, x); if (d <= (+x.r || 150) && d < bd) { bd = d; best = x } }); return best };
+const accTxt = a => !a ? "" : a <= GEO.GOOD ? "±" + a + " मी" : "~" + (a >= 1000 ? (a / 1000).toFixed(1) + " किमी" : a + " मी") + " अंदाज़ा";
+const durHi = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? Math.floor(m / 60) + " घं " + (m % 60 ? m % 60 + " मि" : "") : m + " मि" };
+function trkParse(docs, uid) { const P = [], Ev = [];
+  docs.filter(d => d.uid === uid).forEach(d => (d.pts || []).forEach(s => { const a = String(s).split(","), ts = +a[0]; if (!ts) return;
+    if (a.length >= 3) { const p = { ts, lat: +a[1], lng: +a[2], acc: +a[3] || 0 }; if (isFinite(p.lat) && isFinite(p.lng) && p.lat && p.acc <= 2500) P.push(p) } else Ev.push({ ts, ev: a[1] }) }));
+  P.sort((a, b) => a.ts - b.ts); Ev.sort((a, b) => a.ts - b.ts);
+  const goodTs = P.filter(p => p.acc && p.acc <= GEO.GOOD).map(p => p.ts), nearGood = ts => goodTs.some(g => Math.abs(g - ts) <= 5 * 60000);
+  let Q = P.filter((p, i, a) => (!i || p.ts !== a[i - 1].ts) && (p.acc <= GEO.GOOD || !nearGood(p.ts)));
+  Q = Q.filter((p, i, a) => { if (!i || i === a.length - 1) return true; const x = a[i - 1], y = a[i + 1]; return !(gdist(x, p) > 300 && gdist(p, y) > 300 && gdist(x, y) < 150 && y.ts - x.ts <= 4 * 60000) });
+  return { P: Q, Ev } }
+function trkDay(docs, uid) { const { P, Ev } = trkParse(docs, uid), stops = []; let c = null, km = 0;
+  const close = () => { if (c && c.end - c.start >= 4 * 60000) stops.push(c) };
+  for (const p of P) { const w = 1 / Math.max(5, Math.min(p.acc || GEO.GOOD, 400)) ** 2, rr = Math.max(100, Math.min(p.acc || 0, 400));
+    if (c && gdist(c, p) <= rr && p.ts - c.end <= 25 * 60000) { const W = c.w + w; c.lat = (c.lat * c.w + p.lat * w) / W; c.lng = (c.lng * c.w + p.lng * w) / W; c.w = W; c.n++; c.end = p.ts; c.acc = Math.min(c.acc, p.acc || 999) }
+    else { close(); c = { lat: p.lat, lng: p.lng, w, n: 1, start: p.ts, end: p.ts, acc: p.acc || 999 } } }
+  close(); for (let i = 1; i < P.length; i++) { const d = gdist(P[i - 1], P[i]); if (d > 40 && d < 8000 && P[i].acc <= 300 && P[i - 1].acc <= 300) km += d / 1000 }
+  const gaps = []; let off = null; Ev.forEach(e => { if (["OFF", "STOP", "NOPERM"].includes(e.ev)) { if (!off) off = { start: e.ts, why: e.ev } } else if (["ON", "START"].includes(e.ev) && off) { gaps.push(Object.assign(off, { end: e.ts })); off = null } });
+  if (off) gaps.push(Object.assign(off, { end: 0 })); for (let i = 1; i < P.length; i++) if (P[i].ts - P[i - 1].ts > 20 * 60000 && gdist(P[i - 1], P[i]) > 300) gaps.push({ start: P[i - 1].ts, end: P[i].ts, why: "NOFIX" });
+  stops.forEach(s => s.place = placeAt(s)); return { P, stops, gaps: gaps.sort((a, b) => a.start - b.start), km: Math.round(km * 10) / 10 } }
 async function mapSheet() {
-  const b = sheet(`<h3>🗺️ टीम कहाँ है</h3><div id="mp" class="mapbox"></div><div id="ml" class="empty">⏳…</div>`); let live = [], trk = [], map, lay;
-  try { await loadLib(); live = (await COL("live").list()).filter(x => x.lat && x.lng);
-    trk = FS_ON ? await fsQuery({ from: [{ collectionId: "trk" }], where: { fieldFilter: { field: { fieldPath: "date" }, op: "EQUAL", value: { stringValue: dkey() } } }, limit: 400 }) : (await COL("trk").list()).filter(x => x.date === dkey()) } catch (e) { return $("#ml", b).textContent = "नक्शा नहीं खुला — नेट देखें (" + String(e.message || e).slice(0, 60) + ")" }
-  if (!live.length) { $("#mp", b).remove(); return $("#ml", b).innerHTML = "अभी किसी की लोकेशन नहीं आई।<br>साथी के फोन में APK हो, उसमें लॉगिन हो और लोकेशन की इजाज़त 'हमेशा' दी हो — तब यहाँ दिखेगा।" }
+  const b = sheet(`<h3>🗺️ टीम कहाँ है</h3><div class="seg" id="mpd" style="margin-bottom:8px">${[0, 1, 2].map(i => { const d = new Date(now() - i * 864e5); return `<button data-md="${i}" class="${i ? "" : "on"}">${i ? i === 1 ? "कल" : "परसों" : "आज"}</button>` }).join("")}</div><div id="mp" class="mapbox"></div><div id="ml" class="empty">⏳…</div>`);
+  let live = [], trk = [], map, lay, day = 0, sel = "";
+  const dk = n => dkey(new Date(now() - n * 864e5)), loadTrk = async n => FS_ON ? fsQuery({ from: [{ collectionId: "trk" }], where: { fieldFilter: { field: { fieldPath: "date" }, op: "EQUAL", value: { stringValue: dk(n) } } }, limit: 500 }) : (await COL("trk").list()).filter(x => x.date === dk(n));
+  try { await loadLib(); live = (await COL("live").list()).filter(x => x.lat && x.lng); trk = await loadTrk(0);
+    try { const c = FS_ON ? await fsGet("conf", "places") : LS.get("mr_places", null); GEO.places = (c && c.L) || [] } catch (e) { GEO.places = [] } } catch (e) { return $("#ml", b).textContent = "नक्शा नहीं खुला — नेट देखें (" + String(e.message || e).slice(0, 60) + ")" }
+  if (!live.length && !trk.length) { $("#mp", b).remove(); return $("#ml", b).innerHTML = "अभी किसी की लोकेशन नहीं आई।<br>साथी के फोन में APK हो, उसमें लॉगिन हो और लोकेशन की इजाज़त 'हमेशा' दी हो — तब यहाँ दिखेगा।" }
   map = L.map($("#mp", b), { attributionControl: true, zoomControl: false }); lay = L.layerGroup().addTo(map);
-  /* 16-11: CARTO ने बिना चाबी के नक्शा बंद कर दिया ("API KEY REQUIRED") — अब बिना चाबी वाले: 🗺️ साधारण (OpenStreetMap) + 🛰️ सैटेलाइट (Esri) + दोनों के ऊपर नाम (Esri) — ऊपर दाएँ बटन से बदलें, चुनाव याद रहे */
+  /* 16-11: CARTO ने बिना चाबी के नक्शा बंद कर दिया — अब बिना चाबी वाले: 🗺️ साधारण (OpenStreetMap) + 🛰️ सैटेलाइट (Esri, नाम के साथ); चुनाव याद रहे */
   const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }),
     sat = L.layerGroup([L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 18, attribution: "© Esri, Maxar" }),
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 18 })]);
   (LS.get("mr_maplayer", "map") === "sat" ? sat : osm).addTo(map);
   L.control.layers({ "🗺️ नक्शा": osm, "🛰️ सैटेलाइट": sat }, null, { position: "topright", collapsed: false }).addTo(map);
   map.on("baselayerchange", e => LS.set("mr_maplayer", e.layer === sat ? "sat" : "map"));
-  const path = uid => trk.filter(t => t.uid === uid).sort((a, c) => a.hr - c.hr).flatMap(t => (t.pts || []).map(s => String(s).split(",")).filter(a => +a[0] && +a[1] && +a[2] && !(+a[3] > 60)).map(a => [+a[1], +a[2], +a[0]]));
-  const show = sel => { lay.clearLayers(); const pts = [];
-    live.forEach(u => { const on = now() - (u.seen || u.ts || 0) < 15 * 60000; L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "", html: `<div class="pin ${on ? "" : "off"} ${sel === u.id ? "sel" : ""}">${E((u.name || "?").slice(0, 8))}</div>`, iconSize: [0, 0] }) }).addTo(lay).on("click", () => show(u.id)); pts.push([u.lat, u.lng]) });
-    if (sel) { const P = path(sel); if (P.length > 1) { L.polyline(P.map(p => [p[0], p[1]]), { color: "#b91c1c", weight: 4, opacity: .8 }).addTo(lay); P.forEach(p => pts.push([p[0], p[1]])) } }
-    map.fitBounds(L.latLngBounds(pts).pad(.25), { maxZoom: 17 });
-    $("#ml", b).outerHTML = `<div id="ml">${live.sort((a, c) => (c.seen || 0) - (a.seen || 0)).map(u => { const P = path(u.id), on = now() - (u.seen || u.ts || 0) < 15 * 60000; return `<button class="row ${sel === u.id ? "sel" : ""}" data-mu="${u.id}"><span class="dot ${on ? "on" : ""}"></span><span style="flex:1">${E(u.name || "?")}<small style="display:block;color:var(--mut);font-weight:600">${on ? "🟢 चालू" : "⚪ बंद"} · ${agoHi(u.seen || u.ts || 0)}${u.acc ? " · ±" + u.acc + " मी" : ""}${P.length ? " · आज " + hm(P[0][2]) + " से " + P.length + " जगह दर्ज" : ""}</small></span><b>${sel === u.id ? "रास्ता ✓" : "रास्ता ›"}</b></button>` }).join("")}<p class="hint">नाम दबाएँ → आज का रास्ता लाल लाइन में। लोकेशन सिर्फ़ तब आती है जब साथी के फोन में ऐप चालू हो (ऊपर पट्टी "Marwar Rasoi चालू है" दिखती है)।</p></div>` };
-  show(""); setTimeout(() => map.invalidateSize(), 200);
-  b.addEventListener("click", e => { const t = e.target.closest("[data-mu]"); if (t) show(t.dataset.mu) });
+  const people = () => { const m = new Map(); live.forEach(u => m.set(u.id, u.name || "?")); trk.forEach(t => { if (t.uid && !m.has(t.uid)) m.set(t.uid, t.name || "?") }); return [...m.entries()] };
+  const show = () => { lay.clearLayers(); const pts = [], D = sel ? trkDay(trk, sel) : null;
+    if (!day) live.forEach(u => { const on = now() - (u.seen || u.ts || 0) < 15 * 60000, old = now() - (u.ts || 0) > 15 * 60000, coarse = (u.acc || 0) > GEO.GOOD;
+      if (coarse) L.circle([u.lat, u.lng], { radius: Math.min(u.acc, 3000), color: "#64748b", weight: 1, fillOpacity: .08 }).addTo(lay);
+      L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "", html: `<div class="pin ${on && !old ? "" : "off"} ${sel === u.id ? "sel" : ""}">${E((u.name || "?").slice(0, 8))}${old ? " ⏳" : ""}</div>`, iconSize: [0, 0] }) }).addTo(lay).on("click", () => { sel = u.id; show() }); pts.push([u.lat, u.lng]) });
+    if (D && D.P.length) { const good = D.P.filter(p => p.acc <= 300);
+      if (good.length > 1) L.polyline(good.map(p => [p.lat, p.lng]), { color: "#b91c1c", weight: 4, opacity: .8 }).addTo(lay);
+      D.P.filter(p => p.acc > 300).forEach(p => L.circleMarker([p.lat, p.lng], { radius: 4, color: "#94a3b8", weight: 1, fillOpacity: .5 }).addTo(lay));
+      D.stops.forEach((s, i) => { L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:#1d4ed8">${i + 1}</div>`, iconSize: [0, 0] }) }).addTo(lay); pts.push([s.lat, s.lng]) });
+      D.P.forEach(p => pts.push([p.lat, p.lng])) }
+    if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(.2), { maxZoom: 17 });
+    const P = people(), lv = id => live.find(x => x.id === id);
+    $("#ml", b).outerHTML = `<div id="ml">${P.map(([id, nm]) => { const u = lv(id), on = u && now() - (u.seen || u.ts || 0) < 15 * 60000, fa = u ? now() - (u.ts || 0) : 0, d1 = trkDay(trk, id);
+      return `<button class="row ${sel === id ? "sel" : ""}" data-mu="${id}"><span class="dot ${on ? "on" : ""}"></span><span style="flex:1">${E(nm)}<small style="display:block;color:var(--mut);font-weight:600">${day ? "" : u ? `${on ? "🟢 फ़ोन चालू" : "⚪ फ़ोन से हाल नहीं"} · ${agoHi(u.seen || u.ts || 0)} · 📍 ${fa > 15 * 60000 ? `<b style="color:#b91c1c">जगह ${agoHi(u.ts || 0).replace(" पहले", "")} पुरानी</b>` : "जगह " + agoHi(u.ts || 0)}${u.acc ? " · " + accTxt(u.acc) : ""}${u.gps === false ? " · <b style='color:#b91c1c'>GPS बंद</b>" : ""} · ` : ""}${d1.P.length ? `${hm(d1.P[0].ts)}–${hm(d1.P[d1.P.length - 1].ts)} · ${d1.stops.length} ठहराव · ${d1.km} किमी` : "इस दिन रास्ता नहीं"}</small></span><b>${sel === id ? "रास्ता ✓" : "रास्ता ›"}</b></button>` }).join("")}
+      ${D ? tlHTML(D) : ""}<p class="hint">नाम दबाएँ → उस दिन का रास्ता, कहाँ कितनी देर रुके। ठहराव पर "📍 नाम दें" — अगली बार अपने-आप नाम दिखेगा। धूसर गोल = टावर वाली अंदाज़े की जगह।</p></div>` };
+  const tlHTML = D => { const T = D.stops.map((s, i) => ({ t: s.start, h: `<div class="row" style="align-items:flex-start"><b style="background:#1d4ed8;color:#fff;border-radius:50%;min-width:24px;height:24px;display:grid;place-items:center;font-size:12px">${i + 1}</b><span style="flex:1">🕘 ${hm(s.start)}–${hm(s.end)} · ${durHi(s.end - s.start)}<small style="display:block;color:var(--mut)">${s.place ? "📍 " + E(s.place.n) : "बिना नाम की जगह"}${s.acc > GEO.GOOD ? " · " + accTxt(Math.round(s.acc)) : ""}</small></span>${s.place ? "" : `<button class="btn gh sm" data-pn="${i}">📍 नाम दें</button>`}</div>` }))
+      .concat(D.gaps.map(g => ({ t: g.start, h: `<div class="row" style="color:#b91c1c"><span>📵 ${hm(g.start)}${g.end ? "–" + hm(g.end) : " से"} · ${g.why === "OFF" ? "GPS बंद किया" : g.why === "NOFIX" ? "जगह नहीं मिली" : g.why === "NOPERM" ? "लोकेशन की इजाज़त नहीं" : "ऐप बंद"}</span></div>` }))).sort((a, c) => a.t - c.t);
+    return `<div class="h">🛣️ दिन का रास्ता · ${D.km} किमी · ${D.stops.length} ठहराव</div>${T.map(x => x.h).join("") || `<div class="empty">इस दिन कोई ठहराव नहीं</div>`}` };
+  b.addEventListener("click", async e => {
+    const md = e.target.closest("[data-md]"); if (md) { day = +md.dataset.md; $$("#mpd button", b).forEach(x => x.classList.toggle("on", x === md)); $("#ml", b).outerHTML = `<div id="ml" class="empty">⏳…</div>`; try { trk = await loadTrk(day) } catch (er) { trk = [] } show(); return }
+    const pn = e.target.closest("[data-pn]"); if (pn) { const s = trkDay(trk, sel).stops[+pn.dataset.pn]; const n = prompt("इस जगह का नाम (जैसे: 74 Armd, स्वरूप सा का घर, मार्केट)"); if (!n || !s) return;
+      GEO.places.push({ n: n.trim().slice(0, 40), lat: +s.lat.toFixed(6), lng: +s.lng.toFixed(6), r: 150 });
+      try { if (FS_ON) await fsSet("conf", "places", { L: GEO.places, mt: now() }); else LS.set("mr_places", { L: GEO.places }); toast("📍 नाम सहेजा") } catch (er) { toast("नहीं सहेजा") } show(); return }
+    const r = e.target.closest("[data-mu]"); if (r) { sel = sel === r.dataset.mu ? "" : r.dataset.mu; show() } });
+  show(); setTimeout(() => map.invalidateSize(), 200);
 }
+
 /* ───────── 💰 उधारी: udhar/{id} {name, phone, note, ts, by, lines[{amt, ts, by, why}], pays[{amt, ts, by, how}]} — बाकी = Σlines − Σpays ───────── */
 const udDue = u => (u.lines || []).reduce((t, l) => t + (+l.amt || 0), 0) - (u.pays || []).reduce((t, l) => t + (+l.amt || 0), 0);
 async function udharSheet() {

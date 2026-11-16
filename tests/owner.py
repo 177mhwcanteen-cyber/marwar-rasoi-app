@@ -44,8 +44,11 @@ async def main():
         await s.fill("#nn", "Nk Suresh"); await s.fill("#na", "300"); await s.click("#uadd"); await s.wait_for_timeout(300); ok("₹1050" in await s.inner_text("#ul"), "नया उधार, कुल 1050"); await s.screenshot(path=SH + "/rasoi-udhar.png"); await s.click("#sheet .sx")
         # 🗺️ नक्शा
         await s.click('[data-a="map"]'); await s.wait_for_selector(".pin"); ok(await s.locator(".pin").count() == 2 and await s.locator(".pin.off").count() == 1, "दो साथी, एक बंद")
-        t = await s.inner_text("#ml"); ok("स्वरूप सा" in t and "चालू" in t and "2 घंटे पहले" in t and "3 जगह दर्ज" in t, "सूची (ख़राब GPS वाला बिंदु छूटा): " + t[:200])
-        await s.click('[data-mu="u2"]'); await s.wait_for_timeout(300); ok(await s.locator("#mp path.leaflet-interactive").count() == 1 and await s.locator(".pin.sel").count() == 1, "आज का रास्ता"); await s.screenshot(path=SH + "/rasoi-map.png"); await s.click("#sheet .sx")
+        t = await s.inner_text("#ml"); ok("स्वरूप सा" in t and "फ़ोन चालू" in t and "2 घंटे पहले" in t and "किमी" in t and "±12 मी" in t, "सूची (फ़ोन चालू / जगह की उम्र / किमी): " + t[:240])
+        await s.click('[data-mu="u2"]'); await s.wait_for_timeout(300); t = await s.inner_text("#ml"); ok("दिन का रास्ता" in t and await s.locator(".pin.sel").count() == 1, "आज का रास्ता: " + t[:200])
+        # पुरानी जगह: फ़ोन चालू पर जगह 3 घंटे पुरानी → लाल + ⏳ (16-11 विक्रम जी: "घर बैठा है, रसोई दिखा रहा")
+        await s.click("#sheet .sx"); await s.evaluate("(()=>{const L=LS.get('mr_c_live',[]);L[0].ts=Date.now()-3*3600000;L[0].seen=Date.now()-60000;LS.set('mr_c_live',L)})()")
+        await s.click('[data-a="map"]'); await s.wait_for_selector(".pin"); t = await s.inner_text("#ml"); ok("पुरानी" in t and "⏳" in await s.inner_text("#mp"), "पुरानी जगह साफ़ दिखी: " + t[:200]); await s.screenshot(path=SH + "/rasoi-map.png"); await s.click("#sheet .sx")
         # 👥 ग्राहक: CSV चढ़ाना, हिस्से, खोज, WhatsApp, टिप्पणी
         import datetime; D = lambda n: (datetime.date.today() - datetime.timedelta(days=n)).isoformat()
         H = "Sr,Mobile (Username),Customer Name,Name Pakka?,Delivery Address,Total Orders,Total Spend Rs,Avg Bill Rs,First Order,Last Order,Days Since Last,Customer Type,Fav Dish 1,Fav Dish 2,Fav Dish 3,Fav Dish 4,Fav Dish 5,All Dishes (qty),Veg / Non-Veg,Usual Order Time,Order Type,Payment Habit,Udhaari Pending Rs,Cancelled Bills,Other Names on Bills,Note,WhatsApp Link,Ready Message"
