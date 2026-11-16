@@ -627,12 +627,12 @@ public class OrderRingService extends Service {
         kp.edit().putString("seen", ns.toString()).putBoolean("init2", true).apply();
         /* 🗺️ योजना-6 (योजना-3 E6): विज़िट की तय याद — रात 8 बजे "कल की", सुबह 8:30 "आज की" (हर एक दिन में एक बार) */
         try {
-            Calendar c = Calendar.getInstance(); int hr = c.get(Calendar.HOUR_OF_DAY), mn = c.get(Calendar.MINUTE);
+            Calendar c = Calendar.getInstance(); int vh = c.get(Calendar.HOUR_OF_DAY), mn = c.get(Calendar.MINUTE);
             java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
             String td = df.format(c.getTime()); c.add(Calendar.DATE, 1); String tm = df.format(c.getTime());
             String vk = null, vt = null;
-            if (hr == 20 && vdays.contains(tm)) { vk = tm + "pm"; vt = "🌙 कल की विज़िट तैयार है — रास्ता देख लीजिए"; }
-            else if ((hr == 8 && mn >= 30 || hr == 9) && vdays.contains(td)) { vk = td + "am"; vt = "🗺️ आज की विज़िट — शुभ दिन! पहली यूनिट से शुरू करें"; }
+            if (vh == 20 && vdays.contains(tm)) { vk = tm + "pm"; vt = "🌙 कल की विज़िट तैयार है — रास्ता देख लीजिए"; }
+            else if ((vh == 8 && mn >= 30 || vh == 9) && vdays.contains(td)) { vk = td + "am"; vt = "🗺️ आज की विज़िट — शुभ दिन! पहली यूनिट से शुरू करें"; }
             if (vk != null && !vk.equals(kp.getString("vrem", ""))) {
                 kp.edit().putString("vrem", vk).apply();
                 Notification.Builder vb = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_TICK2) : new Notification.Builder(this);
