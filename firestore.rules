@@ -1,4 +1,5 @@
 // मारवाड़ रसोई — Firestore के नियम (विक्रम जी Firebase कंसोल → Firestore → Rules में पूरा चिपकाएँ)
+// v14 (16-11-2026, योजना-5): 🎙️ वॉकी-टॉकी साथी भी (talk: team()), + tkh (सुना ✓ की रसीद)।
 // v13 (16-11-2026, योजना-3 — एक ही बार Publish): डायरेक्टर दूसरों का खाता बनाए (staff create), hello (नंबर → नाम), साथी (saathi) ऑर्डर ले सके (status new) + रिमाइंडर/फोन-हाल/लोकेशन, tvisit/tvr (विज़िट), tprof (मेरा हाल), tmsg (संदेश), tkr में note/seen।
 // v12 (16-11-2026): + tkaam (📋 हमारी टीम के काम — VBE मैनेजर से, हर साथी सिर्फ़ अपने), tkr (साथी का जवाब); नई भूमिका saathi (सिर्फ़ अपने काम, रसोई का कुछ नहीं)।
 // v11 (15-11-2026): + cfav (बिना पासवर्ड: रेटिंग + पसंद), cname (ग्राहक का नाम-सुधार)। v9: + rlog (रिमाइंडर का हाल), cbook (ग्राहक-बही), talk (वॉकी-टॉकी), dev (फोन का हाल), cacc (ग्राहक-खाता)। v8: डायरेक्टर = पक्की (verified) ईमेल marwarrasoimr@gmail.com, या पुराना नंबर 9509553600 (मोबाइल + पिन)। लोकेशन सिर्फ़ डायरेक्टर देखे।
@@ -79,7 +80,9 @@ service cloud.firestore {
     // ⭐ रेटिंग + पसंदीदा डिश (v11): id = sha256("mrf|मोबाइल") — मोबाइल जानने वाला सिर्फ़ यही देखे (नाम/पता/ऑर्डर नहीं); सूची कोई नहीं; लिखे सिर्फ़ डायरेक्टर
     match /cfav/{h} { allow get: if true; allow list: if false; allow create, update: if owner(); allow delete: if false; }
     // 🎙️ वॉकी-टॉकी (v9): टीम बोले/सुने; बदले-मिटे नहीं
-    match /talk/{id} { allow read, create: if staff(); allow update, delete: if false; }
+    match /talk/{id} { allow read, create: if team(); allow update, delete: if false; }
+    // 🎙️ v14: "सुना ✓" की रसीद — टीम (साथी भी) अपनी लिखे, डायरेक्टर पढ़े
+    match /tkh/{id} { allow create, update: if team() && d().uid == request.auth.uid && d().keys().hasOnly(['m', 'uid', 'by', 'at']); allow read: if owner(); allow delete: if false; }
     // ⏰ रिमाइंडर का हाल (v9, 15-11-2026): टीम/APK लिखे (हो गया / टाला / छूटा), डायरेक्टर + मैनेजर पढ़ें; बदले-मिटे नहीं
     match /rlog/{id} { allow create: if team(); allow read: if mgr(); allow update, delete: if false; }
     // 📋 हमारी टीम के काम (v12): डायरेक्टर (VBE मैनेजर ऐप से) लिखे; हर साथी सिर्फ़ वही पढ़े जिसमें em = उसका लॉगिन; मिटे नहीं

@@ -184,12 +184,23 @@ public class OrderRingService extends Service {
         if (!running) {
             running = true;
             h.post(loop);
+            h.postDelayed(tloop, 5000);
         } else if (intent != null && intent.getBooleanExtra("now", false)) {
             h.removeCallbacks(loop);
             h.post(loop);
         }
         return START_STICKY;
     }
+
+    /* 🎙️ योजना-5: वॉकी-टॉकी की अपनी घड़ी — ड्यूटी (7–22) में हर 15 से., बाकी समय हर 60 से. (ऑर्डर वाली 2 मिनट की घड़ी से अलग) */
+    private final Runnable tloop = new Runnable() {
+        public void run() {
+            if (!running) return;
+            try { talk(); } catch (Exception ignore) { }
+            int hr = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+            h.postDelayed(this, (hr >= 7 && hr < 22) ? 15000L : 60000L);
+        }
+    };
 
     private final Runnable loop = new Runnable() {
         public void run() {
@@ -198,7 +209,6 @@ public class OrderRingService extends Service {
             try { remind(); } catch (Exception ignore) { }
             try { kaam(); } catch (Exception ignore) { }
             try { trkWatch(); } catch (Exception ignore) { }
-            try { talk(); } catch (Exception ignore) { }
             try { health(); } catch (Exception ignore) { }
             h.postDelayed(this, every() * 1000L);
         }
@@ -395,10 +405,26 @@ public class OrderRingService extends Service {
             String to = sv(f, "to"); // "" = सबको · "u:<uid>" = सिर्फ़ उसको · "r:<पद>" = उस पद वालों को
             if (to.length() > 0 && !to.equals("u:" + me) && !to.equals("r:" + prefs(this).getString("role", ""))) continue;
             String a = sv(f, "a");
-            if (a.length() < 100 || System.currentTimeMillis() - ts > 10 * 60000L) continue;
+            /* फ़ोन बंद/बिना नेट था तो भी: 6 घंटे तक का संदेश चालू होते ही बजे (Zello जैसा "रखा रहे, फिर बजे") */
+            if (a.length() < 100 || System.currentTimeMillis() - ts > 6 * 3600000L) continue;
             playTalk(a, sv(f, "mt"), sv(f, "by"));
+            String nm = d.optString("name", ""); heard(nm.substring(nm.lastIndexOf('/') + 1), sv(f, "by"));
             return; // एक बार में एक; अगला अगले चक्कर में
         }
+    }
+
+    /** "सुना ✓" की रसीद tkh/{संदेश}_{uid} — भेजने वाला (डायरेक्टर) देखे; स्क्रीन 10 से. जगे */
+    private void heard(String mid, String by) {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (!pm.isInteractive()) { @SuppressWarnings("deprecation") PowerManager.WakeLock w = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "rasoi:talk"); w.acquire(10000); }
+        } catch (Exception ignore) { }
+        try {
+            String uid = Fs.uid(this);
+            JSONObject f = new JSONObject().put("m", Fs.str(mid)).put("uid", Fs.str(uid)).put("by", Fs.str(Fs.name(this))).put("at", Fs.intv(System.currentTimeMillis()));
+            JSONArray w = new JSONArray().put(new JSONObject().put("update", new JSONObject().put("name", Fs.docPath(this, "tkh/" + mid + "_" + uid)).put("fields", f)));
+            Fs.commit(this, w);
+        } catch (Exception ignore) { }
     }
 
     private void playTalk(String b64, String mt, String by) {
@@ -409,7 +435,7 @@ public class OrderRingService extends Service {
             os.write(raw);
             os.close();
             Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_REM) : new Notification.Builder(this);
-            b.setContentTitle("🎙️ " + (by.length() > 0 ? by : "टीम") + " का संदेश").setContentText("वॉकी-टॉकी — ऐप में दोबारा सुन सकते हैं")
+            b.setContentTitle("🎙️ " + (by.length() > 0 ? by : "टीम") + " का संदेश").setContentText("वॉकी-टॉकी — जवाब: ऐप खोलें → 🎙️ वॉकी-टॉकी · दोबारा सुन सकते हैं")
                     .setSmallIcon(R.mipmap.ic_launcher).setAutoCancel(true).setContentIntent(openApp(8, false)).setPriority(Notification.PRIORITY_HIGH);
             try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 1, b.build()); } catch (Exception ignore) { }
             tmp = new MediaPlayer();

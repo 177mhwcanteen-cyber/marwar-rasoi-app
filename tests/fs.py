@@ -129,6 +129,8 @@ async def main():
         await kb.click('#tabs [data-t="more"]'); await kb.click('[data-a="ktone"]'); await kb.wait_for_selector('#ktg [data-kt="t12"]')
         await kb.click('#ktg [data-kt="t12"]'); await kb.click('#kbs [data-kb="15"]'); await kb.screenshot(path=SH + "/rasoi-ktone.png"); await kb.click("#ksv")
         ok(await kb.evaluate("LS.get('mr_ktone')==='t12'&&+LS.get('mr_kblink')===15"), "🎵 धुन t12 + याद हर 15 मिनट सहेजी")
+        await kb.click('#tabs [data-t="more"]'); await kb.click('[data-a="talk"]'); await kb.wait_for_selector('#tkto [data-to="r:owner"]')
+        ok("विक्रम जी" in await kb.inner_text("#tkto"), "🎙️ साथी का वॉकी: विक्रम जी को भेज सकें"); await kb.click("#sheet .sx")
         ok(await kb.evaluate("(()=>{let n=0;const o=document.hidden;Object.defineProperty(document,'hidden',{value:true,configurable:true});const a=TICK.n;tick();n=TICK.n-a;Object.defineProperty(document,'hidden',{value:o,configurable:true});return n===0})()"), "ऐप पीछे हो तो वेब से आवाज़ नहीं")
         await kb.click('#tabs [data-t="din"]')
         await ow.evaluate("kaamSheet()"); await ow.wait_for_selector("#sheet .tkg"); t = await ow.inner_text("#sheet"); ok("स्वरूप जी" in t and "कैलाश भाई" in t, "डायरेक्टर को सबका हाल: " + t[:200]); await ow.click("#sheet .sx")
