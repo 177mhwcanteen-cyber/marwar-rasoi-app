@@ -83,3 +83,19 @@ async function msgAll(t) {
   try { const at = now(), L = (await fsQuery({ from: [{ collectionId: "staff" }], limit: 100 })).filter(u => u.id !== ME.uid && (u.em || u.phone) && !["off", "pending", "manager", "owner"].includes(u.role)); let n = 0;
     for (const u of L) { try { await fsSet("tmsg", "m" + at.toString(36) + "_" + u.id.slice(0, 8), { em: u.em || mail(u.phone), fr: "d", t: "📣 " + t, kid: "", at, by: "विक्रम जी" }); n++ } catch (e) {} }
     return n } catch (e) { return 0 } }
+/* 🚨 योजना-9 (17-11, विक्रम जी): "मैनेजर को संदेश" जैसा ही — मैनेजर के अलावा किसी भी साथी को नाम दबाकर। साथी के फ़ोन पर सायरन (tmsg ring:true, to = नाम);
+   वह "✅ देख लिया" न दबाए तो 3 मिनट बाद डायरेक्टर के फ़ोन पर अलार्म (APK ownWatch, tkh रसीद से)। मैनेजर = वैसी ही ऑर्डर-घंटी। */
+async function msgSheet() {
+  let L = []; try { L = (await fsQuery({ from: [{ collectionId: "staff" }], limit: 100 })).filter(u => u.id !== ME.uid && (u.em || u.phone) && !["off", "pending", "owner"].includes(u.role)) } catch (e) { }
+  const sel = new Set();
+  const b = sheet(`<h3>📣 संदेश — किसे बजाना है?</h3><p class="hint">नाम दबाकर चुनें। उनके फ़ोन पर <b>सायरन</b> बजेगा; 3 मिनट में "✅ देख लिया" न दबाया तो <b>आपके फ़ोन पर अलार्म</b>।</p>
+   <div class="seg" id="msel" style="flex-wrap:wrap">${L.map(u => `<button data-u="${u.id}" class="${sel.has(u.id) ? "on" : ""}">${u.role === "manager" ? "🧑‍🍳 " : u.role === "saathi" ? "👤 " : ""}${E(u.name || u.phone)}</button>`).join("") || `<span class="hint">टीम की सूची नहीं मिली — नेट देखें</span>`}<button data-u="*">👥 सब</button></div>
+   <textarea class="in" id="mt" rows="3" maxlength="300" placeholder="जैसे: आज 4 बजे तक बायोमेट्रिक मशीन ले आना"></textarea><button class="btn big" id="ms">🚨 भेजें — चुने लोगों के फ़ोन पर सायरन</button>`);
+  $("#msel", b).onclick = e => { const x = e.target.closest("[data-u]"); if (!x) return; if (x.dataset.u === "*") { const all = sel.size < L.length; L.forEach(u => all ? sel.add(u.id) : sel.delete(u.id)) } else sel.has(x.dataset.u) ? sel.delete(x.dataset.u) : sel.add(x.dataset.u);
+    $$("#msel [data-u]", b).forEach(y => y.classList.toggle("on", sel.has(y.dataset.u))) };
+  $("#ms", b).onclick = async () => { const n = $("#mt", b).value.trim(); if (n.length < 3) return toast("संदेश लिखें"); if (!sel.size) return toast("कम से कम एक नाम चुनें");
+    const at = now(); let k = 0, m = 0;
+    for (const u of L.filter(u => sel.has(u.id))) {
+      if (u.role === "manager") { try { await DB.add({ kind: "call", call: "msg", type: "parcel", table: 0, by: ME.name, note: n }); m = 1 } catch (e) { } continue }
+      try { await fsSet("tmsg", "r" + at.toString(36) + "_" + u.id.slice(0, 8), { em: u.em || mail(u.phone), fr: "d", t: "🚨 " + n, kid: "", at, by: "विक्रम जी", ring: true, to: u.name || u.phone }); k++ } catch (e) { } }
+    closeSheet(); toast(k + m ? `🚨 गया ✔ — ${m ? "मैनेजर + " : ""}${k} साथी` : "नहीं गया — नेट देखें") } }

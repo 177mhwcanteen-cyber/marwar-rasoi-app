@@ -52,6 +52,7 @@ public class OrderRingService extends Service {
     static final String A_TEST = "in.marwar.rasoi.RING_TEST";
     static final String A_RDONE = "in.marwar.rasoi.REM_DONE";
     static final String A_RSNZ = "in.marwar.rasoi.REM_SNOOZE";
+    static final String A_MACK = "in.marwar.rasoi.MSG_ACK"; // 🚨 योजना-9: सायरन वाला संदेश "देख लिया"
     static final String CH_REM = "mr_remind_v1";
     static final int NID_REM = 4620;
 
@@ -176,6 +177,9 @@ public class OrderRingService extends Service {
         } else if (A_TEST.equals(a)) {
             testTone = intent.getStringExtra("tone");
             h.post(new Runnable() { public void run() { test(); } });
+        } else if (A_MACK.equals(a)) {
+            final String mid = intent.getStringExtra("mid"); final boolean wr = intent.getBooleanExtra("write", true);
+            h.post(new Runnable() { public void run() { msgAck(mid, wr); } });
         } else if (A_RDONE.equals(a) || A_RSNZ.equals(a)) {
             final String key = intent.getStringExtra("key");
             final boolean done = A_RDONE.equals(a);
@@ -587,7 +591,10 @@ public class OrderRingService extends Service {
         boolean night = hr >= 21 || hr < 7;
         SharedPreferences kp = getSharedPreferences("mr_tk", Context.MODE_PRIVATE);
         boolean first = !kp.getBoolean("init2", false);
-        if (night && !first) return;
+        try { if (prefs(this).getInt("wait", 0) > 0) ownWatch(); } catch (Exception ignore) { }
+        if ((hr >= 23 || hr < 6) && !first) return;
+        String ack = kp.getString("ack", ",");
+        String sirId = null, sirT = null;
         String seen = kp.getString("seen", ",");
         StringBuilder ns = new StringBuilder(",");
         String newT = null; int cnt = 0; boolean urgent = false; int openN = 0; java.util.ArrayList<String> tops = new java.util.ArrayList<>();
@@ -616,6 +623,8 @@ public class OrderRingService extends Service {
                 } else if (col.equals("tmsg")) {
                     if (!"d".equals(sv(f, "fr"))) continue;
                     key = "m" + id; txt = "💬 विक्रम जी: " + sv(f, "t");
+                    long mat = 0; try { mat = Long.parseLong(sv(f, "at").replaceAll("\\..*", "")); } catch (Exception ignore) { }
+                    if (Boolean.TRUE.equals(dec(f.optJSONObject("ring"))) && now - mat < 12 * 3600000L && !ack.contains("," + id + ",")) { sirId = id; sirT = sv(f, "t"); }
                 } else {
                     vdays.add(sv(f, "day"));
                     key = "v" + id + sv(f, "mt"); txt = "🗺️ " + ("".equals(sv(f, "day")) ? "" : sv(f, "day") + " की ") + "विज़िट आ गई";
@@ -624,6 +633,9 @@ public class OrderRingService extends Service {
                 if (!seen.contains("," + key + ",")) { cnt++; if (newT == null || ur) newT = txt; if (ur) urgent = true; }
             }
         }
+        try { KaamBubble.update(this, openN, !tops.isEmpty() && tops.get(0).startsWith("🚨"), tops); } catch (Exception ignore) { }
+        if (sirId != null) siren(sirId, sirT, kp);
+        if (night && !first) return;
         kp.edit().putString("seen", ns.toString()).putBoolean("init2", true).apply();
         /* 🗺️ योजना-6 (योजना-3 E6): विज़िट की तय याद — रात 8 बजे "कल की", सुबह 8:30 "आज की" (हर एक दिन में एक बार) */
         try {
@@ -677,6 +689,76 @@ public class OrderRingService extends Service {
         else b.setCategory(Notification.CATEGORY_MESSAGE).setTimeoutAfter(6 * 3600000L);
         try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_REM + 1, b.build()); } catch (Exception ignore) { }
         kplay(ktone, urgent ? 3 : 2); /* पहले: ज़रूरी पर 40 से. की लूप घंटी — अब साथी की धुन 3 बार, रील रुके नहीं */
+    }
+
+    /** 🚨 योजना-9: विक्रम जी का सायरन वाला संदेश — पूरी स्क्रीन + अलार्म की आवाज़ (40 से.), "✅ देख लिया" तक हर 2 मिनट फिर */
+    static final int NID_SIR = 4630;
+    private void siren(String id, String t, SharedPreferences kp) {
+        long now = System.currentTimeMillis(), last = kp.getLong("sl|" + id, 0);
+        if (now - last < 120000L) return;
+        kp.edit().putLong("sl|" + id, now).apply();
+        int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+        PendingIntent ok = PendingIntent.getService(this, 31, new Intent(this, OrderRingService.class).setAction(A_MACK).putExtra("mid", id), fl);
+        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_REM) : new Notification.Builder(this);
+        b.setContentTitle("🚨 विक्रम जी का ज़रूरी संदेश").setContentText(t)
+                .setStyle(new Notification.BigTextStyle().bigText(t + "\n\n\"✅ देख लिया\" दबाएँ — नहीं दबाया तो विक्रम जी के फ़ोन पर अलार्म बजेगा"))
+                .setSmallIcon(R.mipmap.ic_launcher).setCategory(Notification.CATEGORY_ALARM).setPriority(Notification.PRIORITY_MAX)
+                .setVisibility(Notification.VISIBILITY_PUBLIC).setOngoing(true).setContentIntent(openApp(9, true))
+                .setFullScreenIntent(openApp(10, true), true)
+                .addAction(new Notification.Action.Builder((android.graphics.drawable.Icon) null, "✅ देख लिया", ok).build());
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_SIR, b.build()); } catch (Exception ignore) { }
+        remSound(prefs(this).getString("tone", "t1"));
+    }
+    private void msgAck(String id, boolean write) {
+        if (id == null) return;
+        SharedPreferences kp = getSharedPreferences("mr_tk", Context.MODE_PRIVATE);
+        String a = kp.getString("ack", ",");
+        if (!a.contains("," + id + ",")) { String[] p = a.split(","); StringBuilder nb = new StringBuilder(","); for (int i = Math.max(0, p.length - 60); i < p.length; i++) if (p[i].length() > 0) nb.append(p[i]).append(","); nb.append(id).append(","); kp.edit().putString("ack", nb.toString()).apply(); }
+        remStop();
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NID_SIR); } catch (Exception ignore) { }
+        if (!write) return;
+        try {
+            String uid = Fs.uid(this);
+            JSONObject f = new JSONObject().put("m", Fs.str(id)).put("uid", Fs.str(uid)).put("by", Fs.str(Fs.name(this))).put("at", Fs.intv(System.currentTimeMillis()));
+            Fs.commit(this, new JSONArray().put(new JSONObject().put("update", new JSONObject().put("name", Fs.docPath(this, "tkh/" + id + "_" + uid)).put("fields", f))));
+        } catch (Exception ignore) { }
+    }
+    /** 🚨 मालिक का फ़ोन: सायरन वाला संदेश 3 मिनट में किसी ने "देख लिया" नहीं किया → यहाँ अलार्म (एक बार) */
+    private long owF = 0;
+    private void ownWatch() throws Exception {
+        long now = System.currentTimeMillis();
+        if (now - owF < 60000L) return;
+        owF = now;
+        String q = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"tmsg\"}],\"where\":{\"fieldFilter\":{\"field\":{\"fieldPath\":\"at\"},\"op\":\"GREATER_THAN\",\"value\":{\"integerValue\":\"" + (now - 3 * 3600000L) + "\"}}},\"limit\":100}}";
+        JSONArray arr = new JSONArray(Fs.runQuery(this, q));
+        SharedPreferences kp = getSharedPreferences("mr_tk", Context.MODE_PRIVATE);
+        String esc = kp.getString("esc", ",");
+        java.util.ArrayList<String[]> wait = new java.util.ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject d = arr.getJSONObject(i).optJSONObject("document"); if (d == null) continue;
+            JSONObject f = d.optJSONObject("fields"); if (f == null) continue;
+            String nm = d.optString("name", ""), id = nm.substring(nm.lastIndexOf('/') + 1);
+            if (!Boolean.TRUE.equals(dec(f.optJSONObject("ring"))) || !"d".equals(sv(f, "fr")) || esc.contains("," + id + ",")) continue;
+            long at = 0; try { at = Long.parseLong(sv(f, "at").replaceAll("\\..*", "")); } catch (Exception ignore) { }
+            if (now - at < 180000L) continue;
+            wait.add(new String[]{id, sv(f, "to"), sv(f, "t")});
+        }
+        if (wait.isEmpty()) return;
+        String q2 = "{\"structuredQuery\":{\"from\":[{\"collectionId\":\"tkh\"}],\"where\":{\"fieldFilter\":{\"field\":{\"fieldPath\":\"at\"},\"op\":\"GREATER_THAN\",\"value\":{\"integerValue\":\"" + (now - 3 * 3600000L) + "\"}}},\"limit\":300}}";
+        JSONArray hs = new JSONArray(Fs.runQuery(this, q2));
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
+        for (int i = 0; i < hs.length(); i++) { JSONObject d = hs.getJSONObject(i).optJSONObject("document"); if (d != null && d.optJSONObject("fields") != null) seen.add(sv(d.optJSONObject("fields"), "m")); }
+        StringBuilder who = new StringBuilder(); String txt = "";
+        for (String[] w : wait) { esc = esc + w[0] + ","; if (seen.contains(w[0])) continue; if (who.length() > 0) who.append(", "); who.append(w[1].length() > 0 ? w[1] : "साथी"); txt = w[2]; }
+        kp.edit().putString("esc", esc.length() > 3000 ? "," + esc.substring(esc.length() - 2000) : esc).apply();
+        if (who.length() == 0) return;
+        Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new Notification.Builder(this, CH_REM) : new Notification.Builder(this);
+        b.setContentTitle("⚠ " + who + " ने 3 मिनट में संदेश नहीं देखा").setContentText(txt)
+                .setStyle(new Notification.BigTextStyle().bigText(txt + "\n\nकॉल करके पूछ लीजिए।"))
+                .setSmallIcon(R.mipmap.ic_launcher).setCategory(Notification.CATEGORY_ALARM).setPriority(Notification.PRIORITY_MAX)
+                .setVisibility(Notification.VISIBILITY_PUBLIC).setAutoCancel(true).setContentIntent(openApp(11, true)).setFullScreenIntent(openApp(12, true), true);
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NID_SIR + 1, b.build()); } catch (Exception ignore) { }
+        remSound(prefs(this).getString("tone", "t1"));
     }
 
     private void fire(String key) {

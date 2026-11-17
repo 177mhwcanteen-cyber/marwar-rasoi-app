@@ -59,6 +59,8 @@ async def fake(route):
             if not is_owner: return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
         elif col in ("tvr", "tmsg"):
             if key in DOCS or not email or sv(f, "em") != email or (col == "tmsg" and sv(f, "fr") != "s") or (col == "tvr" and sv(f, "ans") not in ("pahuncha", "mila", "nahi")): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
+        elif col == "tkh":
+            if not email or sv(f, "m") is None: return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
         elif col == "tkr":
             if key in DOCS or not email or sv(f, "em") != email or sv(f, "ans") not in ("done", "gaya", "nahi", "note", "seen"): return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
         elif not is_staff: return await J({"error": {"message": "PERMISSION_DENIED"}}, 403)
@@ -116,6 +118,12 @@ async def main():
         await kb.fill("#msgt", "चेक मिल गया, कल जमा करूँगा"); await kb.click('[data-tk="msend"]'); await kb.wait_for_timeout(500)
         ok(any(sv(f, "fr") == "s" and "चेक मिल गया" in sv(f, "t") for k, f in DOCS.items() if k.startswith("tmsg/")), "साथी का संदेश")
         n = await ow.evaluate("msgAll('शाम 7 बजे पार्टी है')"); ok(n >= 1 and any(sv(f, "fr") == "d" and sv(f, "em") == KB and "पार्टी है" in sv(f, "t") for k, f in DOCS.items() if k.startswith("tmsg/")), "📣 संदेश बाकी साथी (कैलाश भाई) तक भी गया")
+        # योजना-9: 🚨 सायरन — डायरेक्टर नाम चुनकर भेजे → साथी को लाल पट्टी → ✅ देख लिया = tkh रसीद
+        await ow.evaluate("msgSheet()"); await ow.wait_for_selector("#msel"); await ow.click('#msel button:has-text("कैलाश")'); await ow.fill("#mt", "बायोमेट्रिक मशीन आज लानी है"); await ow.click("#ms"); await ow.wait_for_timeout(700)
+        S9 = [(k, f) for k, f in DOCS.items() if k.startswith("tmsg/") and "बायोमेट्रिक" in (sv(f, "t") or "")]
+        ok(len(S9) == 1 and sv(S9[0][1], "em") == KB and S9[0][1].get("ring", {}).get("booleanValue") is True and "कैलाश" in sv(S9[0][1], "to"), "🚨 सायरन सिर्फ़ चुने साथी को: " + str(len(S9)))
+        await kb.click('[data-tk="ref"]'); await kb.wait_for_selector('[data-tk="mack"]'); await kb.click('[data-tk="mack"]'); await kb.wait_for_timeout(600)
+        ok(any(k.startswith("tkh/" + S9[0][0].split("/")[1]) for k in DOCS) and not await kb.query_selector('[data-tk="mack"]'), "✅ देख लिया → tkh रसीद, पट्टी हटी")
         FAIL.add(KB); await kb.click('[data-tk="note"]'); await kb.fill("#kmn", "आधा काम हुआ"); await kb.click("#kmo"); await kb.wait_for_timeout(500)
         ok(await kb.evaluate("LS.get('mr_out',[]).length") == 1 and "भेजना बाकी" in await kb.inner_text("#pg"), "नेट नहीं: कतार में")
         FAIL.discard(KB); await kb.evaluate("flushOut()"); await kb.wait_for_timeout(500)

@@ -502,6 +502,29 @@ public class BtPrinterPlugin extends Plugin {
         call.resolve();
     }
 
+    /** 🚨 योजना-9: वेब में "देख लिया" दबाया — APK की घंटी रोके (रसीद वेब लिख चुका) */
+    @PluginMethod
+    public void kAck(PluginCall call) {
+        try {
+            Intent it = new Intent(getContext(), OrderRingService.class).setAction(OrderRingService.A_MACK).putExtra("mid", call.getString("id", "")).putExtra("write", false);
+            androidx.core.content.ContextCompat.startForegroundService(getContext(), it);
+        } catch (Exception ignore) { }
+        call.resolve();
+    }
+
+    /** 🫧 योजना-9: साथी का बबल — {on} सहेजे; अनुमति न हो और ask हो तो सेटिंग खोले। लौटाए {on, can} */
+    @PluginMethod
+    public void bubble(PluginCall call) {
+        if (call.getData().has("on")) OrderRingService.prefs(getContext()).edit().putBoolean("bub", call.getBoolean("on", true)).apply();
+        boolean can = KaamBubble.can(getContext());
+        if (!can && call.getBoolean("ask", false) && Build.VERSION.SDK_INT >= 23) {
+            try { Intent it = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getContext().getPackageName())); it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); getContext().startActivity(it); } catch (Exception ignore) { }
+        }
+        if (!OrderRingService.prefs(getContext()).getBoolean("bub", true)) KaamBubble.hideNow();
+        JSObject o = new JSObject(); o.put("on", OrderRingService.prefs(getContext()).getBoolean("bub", true)); o.put("can", can);
+        call.resolve(o);
+    }
+
     @PluginMethod
     public void ringStop(PluginCall call) {
         OrderRingService.prefs(getContext()).edit().putBoolean("on", false).remove("rt").apply();

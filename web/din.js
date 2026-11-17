@@ -84,13 +84,22 @@ function vDin() {
   const goal = P.goal || 100, st = P.today || 0, pct = Math.min(100, Math.round(st * 100 / goal));
   return `<div class="dhi"><div class="ring" style="--p:${pct}"><b>${st}</b><small>⭐</small></div><div><b>🙏 नमस्ते ${E(myFirst())}</b><span>आज ${V ? (V.v || []).length + " यूनिट · " : ""}${op.length} काम — समय पर सेवा, हमारी पहचान${P.streak ? ` · 🔥 ${P.streak} दिन` : ""}</span></div></div>
    ${DIN.off ? `<div class="tkrej" style="background:#e2e8f0;color:#334155">📶 नेट नहीं — पिछली बार का दिखा रहे हैं</div>` : ""}${outBar()}
-   ${vVisit()}${vKaam()}${vMsg()}
+   ${vSiren()}${vVisit()}${vKaam()}${vMsg()}
    ${today.length ? `<details class="tkg"><summary><b>✅ आज किया</b><span>${today.length}</span></summary>${today.map(k => `<div class="row"><span>${E(k.t)}</span><b>⭐ ${k.stars || k.earn || ""}</b></div>`).join("")}</details>` : ""}` }
+/* 🚨 योजना-9 (17-11): विक्रम जी का सायरन वाला संदेश — सबसे ऊपर लाल; "✅ देख लिया" = tkh रसीद (न दबाएँ तो 3 मिनट बाद विक्रम जी के फ़ोन पर अलार्म) */
+const sirAck = () => LS.get("mr_sack", []);
+const sirens = () => DIN.M.filter(m => m.fr === "d" && m.ring && now() - (m.at || 0) < 12 * 3600e3 && !sirAck().includes(m.id));
+function vSiren() { const L = sirens(); if (!L.length) return "";
+  return L.map(m => `<div class="tkrej" style="background:#dc2626;color:#fff;padding:12px;border-radius:14px;margin:8px 0;animation:kbl 2s infinite"><b style="font-size:16px">🚨 विक्रम जी का ज़रूरी संदेश</b><div style="font-size:16px;margin:6px 0">${E(m.t)}</div><small>${hm(m.at)}</small><button class="btn big" data-tk="mack" data-id="${E(m.id)}" style="background:#fff;color:#b91c1c;margin-top:8px">✅ देख लिया</button></div>`).join("") }
+async function sirAckDo(id) { LS.set("mr_sack", sirAck().concat([id]).slice(-80)); try { const P = NAT(); P && P.kAck && P.kAck({ id }) } catch (e) { }
+  try { await fsSet("tkh", id + "_" + ME.uid, { m: id, uid: ME.uid, by: ME.name, at: now() }) } catch (e) { qSend("tkh", id + "_" + ME.uid, { m: id, uid: ME.uid, by: ME.name, at: now() }) }
+  toast("✅ विक्रम जी को पता चल गया — आपने देख लिया"); dinRedraw() }
 function dinRedraw() { if (DIN.host && DIN.host.isConnected) DIN.host.innerHTML = vDin(); else if (ME && ME.role === "saathi") saathiDraw() }
 /* ── क्लिक (साथी के पन्ने पर) ── */
 function dinClick(x) { const k = x.dataset.tk;
   if (k === "ref") return Promise.all([kaamLoad(true), dinLoad()]).then(dinRedraw);
   if (k === "msend") return msgSend();
+  if (k === "mack") return sirAckDo(x.dataset.id);
   if (k === "kreq") return kreqSend();
   if (k === "vz") return vzAns(x.dataset.v, +x.dataset.i, x.dataset.a2);
   kaamAns(x.dataset.id, k, $("#kmh")) }
@@ -142,8 +151,11 @@ function ktSheet() { const KT = ["tick"].concat(Array.from({ length: 20 }, (_, i
   <div class="h" style="margin-top:12px">🔁 खुले काम हों तो हर कितनी देर याद दिलाए</div>
   <div class="seg" id="kbs">${[[15, "15 मिनट"], [30, "30 मिनट"], [60, "1 घंटा"], [0, "बंद"]].map(([v, l]) => `<button data-kb="${v}" class="${B === v ? "on" : ""}">${l}</button>`).join("")}</div>
   <p class="hint">सुबह 7 से रात 9 तक ही — ऊपर से सूचना उतरेगी, बत्ती चमकेगी, धुन एक बार।</p>
+  <div class="h" style="margin-top:12px">🫧 हर ऐप के ऊपर काम का बबल</div><p class="hint">गोले में आपके बाकी काम की गिनती — दबाओ तो सूची। पहली बार "दूसरे ऐप के ऊपर दिखाएँ" की अनुमति दें।</p>
+  <div class="seg"><button id="kbon" style="flex:1">🫧 चालू</button><button id="kboff" style="flex:1">बंद</button></div>
   <button class="btn big" id="ksv">✅ सहेजें</button>`);
-  b.onclick = e => { const t = e.target.closest("[data-kt],[data-kb],#ksv"); if (!t) return;
+  b.onclick = e => { const t = e.target.closest("[data-kt],[data-kb],#ksv,#kbon,#kboff"); if (!t) return;
+    if (t.id === "kbon" || t.id === "kboff") { const P = NAT(); if (!P || !P.bubble) return toast("नई APK डालें — तभी बबल"); P.bubble({ on: t.id === "kbon", ask: true }).then(r => toast(r.on ? (r.can ? "🫧 बबल चालू ✓ (1 मिनट में दिखेगा)" : "अनुमति दें: VBE मारवाड़ → दूसरे ऐप के ऊपर ✓") : "बबल बंद")).catch(() => 0); return }
     if (t.dataset.kt) { T = t.dataset.kt; try { (TICK.pv = TICK.pv || new Audio()).src = "tones/" + T + ".wav"; TICK.pv.play().catch(() => 0) } catch (x) { } return $$("#ktg button", b).forEach(x => x.classList.toggle("on", x === t)) }
     if (t.dataset.kb != null) { B = +t.dataset.kb; return $$("#kbs button", b).forEach(x => x.classList.toggle("on", x === t)) }
     LS.set("mr_ktone", T); LS.set("mr_kblink", B); toast("✔ धुन: " + nm(T) + " · याद: " + (B ? "हर " + B + " मिनट" : "बंद")); closeSheet(); try { native() } catch (x) { } } }
